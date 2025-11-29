@@ -207,14 +207,15 @@ export default function SignUpScreen({ navigation }) {
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Phone Number</Text>
               <TextInput
+                ref={phoneInputRef}
                 style={styles.input}
                 placeholder="0712345678"
                 placeholderTextColor="#666"
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
                 keyboardType="phone-pad"
-                autoFocus
                 editable={!loading}
+                autoFocus={false}
               />
             </View>
 
