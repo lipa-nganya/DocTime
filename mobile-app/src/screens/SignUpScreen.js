@@ -21,97 +21,46 @@ export default function SignUpScreen() {
   const otpRefs = useRef([]);
 
   const handleRequestOTP = async () => {
-    // Show immediate feedback
-    Alert.alert('Info', 'Button clicked! Starting OTP request...', [{ text: 'OK' }]);
+    if (!phoneNumber || phoneNumber.trim() === '') {
+      Alert.alert('Error', 'Please enter your phone number');
+      return;
+    }
+
+    if (requestingOTP || loading) {
+      return;
+    }
+
+    setRequestingOTP(true);
+    setLoading(true);
     
     try {
-      if (!phoneNumber || phoneNumber.trim() === '') {
-        Alert.alert('Error', 'Please enter your phone number');
-        return;
-      }
-
-      // Prevent double-clicking
-      if (requestingOTP || loading) {
-        return;
-      }
-
-      setRequestingOTP(true);
-      setLoading(true);
+      const response = await api.post('/auth/request-otp', { phoneNumber });
       
-      console.log('📱 Requesting OTP for:', phoneNumber);
-      console.log('📱 API URL:', api.defaults.baseURL);
-      console.log('📱 Full endpoint:', `${api.defaults.baseURL}/auth/request-otp`);
-      
-      const response = await api.post('/auth/request-otp', { phoneNumber }, {
-        timeout: 60000,
-        headers: {
-          'ngrok-skip-browser-warning': 'true',
-        }
-      });
-      
-      console.log('✅ OTP Response:', response.data);
-      console.log('✅ Response status:', response.status);
-      
-      // Check if response is successful
-      if (!response.data || !response.data.success) {
-        Alert.alert('Error', `Invalid response: ${JSON.stringify(response.data)}`);
-        throw new Error(response.data?.message || 'Invalid response from server');
-      }
-      
-      Alert.alert('Success', `OTP sent! Response: ${JSON.stringify(response.data)}`, [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            // Show snackbar notification
-            setSnackbarMessage('OTP sent to your phone! Please check your messages.');
-            setSnackbarVisible(true);
-            
-            // Automatically redirect to OTP screen
-            setStep('otp');
-            
-            // In dev mode, auto-fill OTP if provided
-            if (response.data?.otp) {
-              const otpDigits = response.data.otp.split('').slice(0, 4);
-              setOtp(otpDigits);
-              // Focus first input
-              setTimeout(() => {
-                if (otpRefs.current[0]) {
-                  otpRefs.current[0].focus();
-                }
-              }, 100);
-            } else {
-              // Focus first OTP input
-              setTimeout(() => {
-                if (otpRefs.current[0]) {
-                  otpRefs.current[0].focus();
-                }
-              }, 100);
+      if (response.data?.success) {
+        setSnackbarMessage('OTP sent to your phone! Please check your messages.');
+        setSnackbarVisible(true);
+        setStep('otp');
+        
+        if (response.data?.otp) {
+          const otpDigits = response.data.otp.split('').slice(0, 4);
+          setOtp(otpDigits);
+          setTimeout(() => {
+            if (otpRefs.current[0]) {
+              otpRefs.current[0].focus();
             }
-          }
+          }, 100);
+        } else {
+          setTimeout(() => {
+            if (otpRefs.current[0]) {
+              otpRefs.current[0].focus();
+            }
+          }, 100);
         }
-      ]);
-    } catch (error) {
-      console.error('❌ OTP Error:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url,
-        baseURL: error.config?.baseURL
-      });
-      
-      let errorMessage = 'Failed to send OTP.\n\n';
-      if (error.response) {
-        errorMessage += `Status: ${error.response.status}\n`;
-        errorMessage += `Error: ${JSON.stringify(error.response.data)}`;
-      } else if (error.request) {
-        errorMessage += 'No response from server.\n';
-        errorMessage += 'Check your internet connection.\n';
-        errorMessage += `API URL: ${api.defaults.baseURL}`;
       } else {
-        errorMessage += `Error: ${error.message}`;
+        throw new Error(response.data?.message || 'Invalid response');
       }
-      
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to send OTP';
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);

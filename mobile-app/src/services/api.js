@@ -22,13 +22,9 @@ const api = axios.create({
   baseURL: `${apiBaseUrl}/api`,
   headers: {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true', // Skip ngrok browser warning
-    'User-Agent': 'DocTime-Mobile-App', // Custom user agent
+    'ngrok-skip-browser-warning': 'true',
   },
-  timeout: 60000, // 60 second timeout (increased for slow connections)
-  validateStatus: function (status) {
-    return status >= 200 && status < 500; // Don't throw on 4xx errors
-  },
+  timeout: 30000,
 });
 
 // Add token to requests
