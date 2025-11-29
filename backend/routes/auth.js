@@ -119,11 +119,22 @@ router.post('/signup', [
   body('otherRole').optional().isString()
 ], async (req, res) => {
   try {
+    // Log incoming request data for debugging
+    console.log('📥 Signup request received:', {
+      phoneNumber: req.body.phoneNumber,
+      otp: req.body.otp ? '****' : 'missing',
+      pin: req.body.pin ? '****' : 'missing',
+      role: req.body.role,
+      otherRole: req.body.otherRole
+    });
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.error('Validation errors:', errors.array());
+      console.error('❌ Validation errors:', JSON.stringify(errors.array(), null, 2));
+      const firstError = errors.array()[0];
       return res.status(400).json({ 
-        error: errors.array()[0]?.msg || 'Invalid value',
+        error: firstError?.msg || 'Invalid value',
+        field: firstError?.param || 'unknown',
         errors: errors.array() 
       });
     }

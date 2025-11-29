@@ -165,9 +165,17 @@ export default function SignUpScreen({ navigation }) {
         throw new Error('Invalid response from server');
       }
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error('❌ Signup error:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Request data sent:', {
+        phoneNumber: phoneNumber.trim(),
+        otp: otp.join(''),
+        pin: '****',
+        role: 'Surgeon'
+      });
       const msg = error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || error.message || 'Failed to sign up';
-      Alert.alert('Sign Up Failed', msg);
+      const field = error.response?.data?.field || '';
+      Alert.alert('Sign Up Failed', field ? `${field}: ${msg}` : msg);
     } finally {
       setLoading(false);
     }
