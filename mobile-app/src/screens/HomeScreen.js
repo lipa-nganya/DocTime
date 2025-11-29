@@ -58,11 +58,9 @@ export default function HomeScreen() {
         {loading ? (
           <Text>Loading...</Text>
         ) : cases.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Card.Content>
-              <Text style={styles.emptyText}>No upcoming cases</Text>
-            </Card.Content>
-          </Card>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No upcoming cases</Text>
+          </View>
         ) : (
           cases.map((caseItem) => (
             <Card
@@ -114,12 +112,16 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     elevation: 2,
   },
-  emptyCard: {
+  emptyContainer: {
     marginTop: theme.spacing.xl,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
   },
   emptyText: {
     textAlign: 'center',
     color: theme.colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '500',
   },
   patientName: {
     fontSize: 18,

@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="512" fill="#393D7E"/>
+  
+  <!-- Medical cross icon -->
+  <g transform="translate(512, 512)">
+    <!-- Horizontal bar -->
+    <rect x="-120" y="-30" width="240" height="60" rx="10" fill="#6DC3BB"/>
+    <!-- Vertical bar -->
+    <rect x="-30" y="-120" width="60" height="240" rx="10" fill="#6DC3BB"/>
+  </g>
+</svg>
+

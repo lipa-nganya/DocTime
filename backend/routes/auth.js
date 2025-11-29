@@ -484,6 +484,138 @@ function authenticateToken(req, res, next) {
   });
 }
 
+/**
+ * Request PIN reset OTP
+ */
+router.post('/request-reset-pin', authenticateToken, [
+  body('phoneNumber').notEmpty().withMessage('Phone number is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: errors.array()[0].msg });
+    }
+
+    const { phoneNumber } = req.body;
+    
+    // Format phone number
+    let formattedPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '254' + formattedPhone.substring(1);
+    }
+    if (!formattedPhone.startsWith('254')) {
+      formattedPhone = '254' + formattedPhone;
+    }
+    formattedPhone = formattedPhone.replace(/\D/g, '');
+
+    // Verify user exists
+    const user = await User.findOne({ where: { phoneNumber: formattedPhone } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    
+    // Store OTP (expires in 10 minutes)
+    otpStore.set(formattedPhone + '_reset', {
+      otp,
+      expiresAt: Date.now() + 10 * 60 * 1000
+    });
+
+    // Send OTP via SMS if enabled
+    const Settings = require('../models').Settings;
+    const smsSetting = await Settings.findOne({ where: { key: 'ENABLE_SMS' } });
+    const enableSms = smsSetting?.value === 'true' || process.env.ENABLE_SMS === 'true';
+
+    if (enableSms) {
+      try {
+        await sendOTP(formattedPhone, otp);
+      } catch (smsError) {
+        console.error('Failed to send SMS:', smsError);
+        // Still return success with OTP in dev mode
+        if (process.env.NODE_ENV === 'development') {
+          return res.json({ success: true, otp, message: 'OTP sent (dev mode)' });
+        }
+        return res.status(500).json({ error: 'Failed to send OTP' });
+      }
+    }
+
+    // In dev mode or if SMS is disabled, return OTP
+    if (!enableSms || process.env.NODE_ENV === 'development') {
+      return res.json({ success: true, otp, message: 'OTP generated (dev mode)' });
+    }
+
+    res.json({ success: true, message: 'OTP sent to your phone' });
+  } catch (error) {
+    console.error('Error requesting PIN reset:', error);
+    res.status(500).json({ error: 'Failed to request PIN reset' });
+  }
+});
+
+/**
+ * Reset PIN
+ */
+router.post('/reset-pin', authenticateToken, [
+  body('phoneNumber').notEmpty().withMessage('Phone number is required'),
+  body('otp').isLength({ min: 4, max: 4 }).withMessage('OTP must be 4 digits'),
+  body('newPin').isLength({ min: 4, max: 6 }).withMessage('PIN must be between 4 and 6 digits')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: errors.array()[0].msg });
+    }
+
+    const { phoneNumber, otp, newPin } = req.body;
+    
+    // Format phone number
+    let formattedPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '254' + formattedPhone.substring(1);
+    }
+    if (!formattedPhone.startsWith('254')) {
+      formattedPhone = '254' + formattedPhone;
+    }
+    formattedPhone = formattedPhone.replace(/\D/g, '');
+
+    // Verify OTP
+    const storedOtp = otpStore.get(formattedPhone + '_reset');
+    if (!storedOtp) {
+      return res.status(400).json({ error: 'Invalid or expired OTP. Please request a new OTP.' });
+    }
+
+    if (Date.now() > storedOtp.expiresAt) {
+      otpStore.delete(formattedPhone + '_reset');
+      return res.status(400).json({ error: 'OTP has expired. Please request a new OTP.' });
+    }
+
+    if (storedOtp.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP. Please check and try again.' });
+    }
+
+    // Find user
+    const user = await User.findOne({ where: { phoneNumber: formattedPhone } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Hash new PIN
+    const pinHash = await bcrypt.hash(newPin, 10);
+
+    // Update PIN
+    await user.update({ pinHash });
+
+    // Clear OTP
+    otpStore.delete(formattedPhone + '_reset');
+
+    res.json({ success: true, message: 'PIN reset successfully' });
+  } catch (error) {
+    console.error('Error resetting PIN:', error);
+    res.status(500).json({ error: 'Failed to reset PIN' });
+  }
+});
+
 module.exports = router;
 module.exports.authenticateToken = authenticateToken;
 

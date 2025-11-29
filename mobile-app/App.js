@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider as PaperProvider } from 'react-native-paper';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
@@ -16,6 +17,8 @@ import CaseDetailsScreen from './src/screens/CaseDetailsScreen';
 import CaseHistoryScreen from './src/screens/CaseHistoryScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
 import ReferCaseScreen from './src/screens/ReferCaseScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import ResetPINScreen from './src/screens/ResetPINScreen';
 
 import { theme } from './src/theme';
 
@@ -25,6 +28,30 @@ const Tab = createBottomTabNavigator();
 const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
 
 function MainTabs() {
+  const [user, setUser] = React.useState(null);
+
+  React.useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem('user');
+      if (userStr) {
+        setUser(JSON.parse(userStr));
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
+
+  const getUserGreeting = () => {
+    if (user?.prefix && user?.firstName) {
+      return `Hi ${user.prefix} ${user.firstName}`;
+    }
+    return 'Hi';
+  };
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -39,17 +66,46 @@ function MainTabs() {
       <Tab.Screen 
         name="Home" 
         component={HomeScreen}
-        options={{ title: 'Upcoming Cases' }}
+        options={{ 
+          title: getUserGreeting(),
+          tabBarLabel: 'Upcoming',
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="calendar" size={size} color={color} />
+          ),
+        }}
+        listeners={{
+          focus: loadUser,
+        }}
       />
       <Tab.Screen 
         name="History" 
         component={CaseHistoryScreen}
-        options={{ title: 'Case History' }}
+        options={{ 
+          title: 'Case History',
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="history" size={size} color={color} />
+          ),
+        }}
       />
       <Tab.Screen 
         name="Reports" 
         component={ReportsScreen}
-        options={{ title: 'Reports' }}
+        options={{ 
+          title: 'Reports',
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="chart-bar" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{ 
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="account" size={size} color={color} />
+          ),
+        }}
       />
     </Tab.Navigator>
   );
@@ -59,6 +115,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState('SignUp');
   const [isInitialized, setIsInitialized] = useState(false);
+  const navigationRef = React.useRef();
 
   useEffect(() => {
     // Only run once on mount
@@ -148,7 +205,7 @@ export default function App() {
 
   return (
     <PaperProvider theme={theme}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator 
           initialRouteName={initialRoute}
           screenOptions={{ headerShown: false }}
@@ -183,6 +240,26 @@ export default function App() {
             options={{ 
               headerShown: true,
               title: 'Refer Case',
+              headerStyle: { backgroundColor: theme.colors.primary },
+              headerTintColor: theme.colors.white
+            }}
+          />
+          <Stack.Screen 
+            name="Profile" 
+            component={ProfileScreen}
+            options={{ 
+              headerShown: true,
+              title: 'Profile',
+              headerStyle: { backgroundColor: theme.colors.primary },
+              headerTintColor: theme.colors.white
+            }}
+          />
+          <Stack.Screen 
+            name="ResetPIN" 
+            component={ResetPINScreen}
+            options={{ 
+              headerShown: true,
+              title: 'Reset PIN',
               headerStyle: { backgroundColor: theme.colors.primary },
               headerTintColor: theme.colors.white
             }}
