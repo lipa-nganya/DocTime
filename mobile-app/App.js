@@ -63,7 +63,13 @@ export default function App() {
 
   useEffect(() => {
     checkAuth();
-    checkForUpdates();
+    // Delay update check to avoid interrupting user input
+    // Check for updates after a delay to allow user to interact first
+    const updateTimer = setTimeout(() => {
+      checkForUpdates();
+    }, 3000); // Wait 3 seconds before checking for updates
+    
+    return () => clearTimeout(updateTimer);
   }, []);
 
   const checkForUpdates = async () => {
@@ -74,14 +80,32 @@ export default function App() {
         return;
       }
 
+      // Don't check for updates if user is on signup/login screens
+      // This prevents interrupting user input
+      const currentRoute = navigationRef.current?.getCurrentRoute();
+      const isAuthScreen = currentRoute?.name === 'SignUp' || currentRoute?.name === 'Login';
+      
+      if (isAuthScreen) {
+        console.log('📱 Skipping update check on auth screen');
+        return;
+      }
+
       console.log('📱 Checking for updates...');
       const update = await Updates.checkForUpdateAsync();
       
       if (update.isAvailable) {
         console.log('📱 Update available, fetching...');
         await Updates.fetchUpdateAsync();
-        console.log('📱 Update fetched, reloading...');
-        await Updates.reloadAsync();
+        // Only reload if user is not actively interacting with auth screens
+        const currentRouteAfterFetch = navigationRef.current?.getCurrentRoute();
+        const isStillAuthScreen = currentRouteAfterFetch?.name === 'SignUp' || currentRouteAfterFetch?.name === 'Login';
+        
+        if (!isStillAuthScreen) {
+          console.log('📱 Update fetched, reloading...');
+          await Updates.reloadAsync();
+        } else {
+          console.log('📱 Update fetched but delaying reload (user on auth screen)');
+        }
       } else {
         console.log('📱 No updates available');
       }
@@ -114,10 +138,6 @@ export default function App() {
     <PaperProvider theme={theme}>
       <NavigationContainer 
         ref={navigationRef}
-        onReady={() => {
-          // Re-check auth state when navigation is ready
-          checkAuth();
-        }}
       >
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!isAuthenticated ? (

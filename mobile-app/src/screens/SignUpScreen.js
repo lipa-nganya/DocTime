@@ -22,12 +22,25 @@ export default function SignUpScreen({ navigation }) {
   const [step, setStep] = useState('phone'); // 'phone', 'otp', 'pin'
   const [loading, setLoading] = useState(false);
   const otpRefs = useRef([]);
+  const phoneInputRef = useRef(null);
 
   useEffect(() => {
     if (step === 'otp' && otpRefs.current[0]) {
       setTimeout(() => otpRefs.current[0].focus(), 100);
     }
   }, [step]);
+  
+  // Prevent component from unmounting/re-rendering unnecessarily
+  useEffect(() => {
+    // Focus phone input when component mounts and step is 'phone'
+    if (step === 'phone' && phoneInputRef.current) {
+      // Small delay to ensure input is ready
+      const timer = setTimeout(() => {
+        phoneInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const formatPhoneNumber = (phone) => {
     let cleaned = phone.replace(/\D/g, '');
