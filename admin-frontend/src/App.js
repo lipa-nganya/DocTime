@@ -279,6 +279,164 @@ function Roles() {
   );
 }
 
+function Facilities() {
+  const [facilities, setFacilities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newFacilityName, setNewFacilityName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    loadFacilities();
+  }, []);
+
+  const loadFacilities = async () => {
+    try {
+      // Admin can access facilities without auth token (admin routes bypass auth)
+      const response = await axios.get(`${API_BASE_URL}/facilities`);
+      setFacilities(response.data.facilities || []);
+    } catch (error) {
+      console.error('Error loading facilities:', error);
+      // If auth error, try admin endpoint
+      try {
+        const adminResponse = await axios.get(`${API_BASE_URL}/admin/facilities`);
+        setFacilities(adminResponse.data.facilities || []);
+      } catch (adminError) {
+        console.error('Error loading facilities from admin:', adminError);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddFacility = async () => {
+    if (!newFacilityName.trim()) {
+      alert('Please enter a facility name');
+      return;
+    }
+
+    setAdding(true);
+    try {
+      // Try regular endpoint first
+      try {
+        await axios.post(`${API_BASE_URL}/facilities`, {
+          name: newFacilityName.trim()
+        });
+      } catch (error) {
+        // If auth error, try admin endpoint
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          await axios.post(`${API_BASE_URL}/admin/facilities`, {
+            name: newFacilityName.trim()
+          });
+        } else {
+          throw error;
+        }
+      }
+      setNewFacilityName('');
+      loadFacilities();
+      alert('Facility added successfully');
+    } catch (error) {
+      console.error('Error adding facility:', error);
+      if (error.response?.data?.error) {
+        alert(`Error: ${error.response.data.error}`);
+      } else {
+        alert('Failed to add facility');
+      }
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDeleteFacility = async (facilityId) => {
+    if (!confirm('Are you sure you want to delete this facility?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API_BASE_URL}/admin/facilities/${facilityId}`);
+      loadFacilities();
+      alert('Facility deleted successfully');
+    } catch (error) {
+      console.error('Error deleting facility:', error);
+      alert('Failed to delete facility');
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div className="facilities">
+      <h2>Facilities</h2>
+      <div className="add-facility-form" style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #ddd', borderRadius: '8px' }}>
+        <h3>Add New Facility</h3>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="Enter facility name (e.g., Nairobi Hospital)"
+            value={newFacilityName}
+            onChange={(e) => setNewFacilityName(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddFacility();
+              }
+            }}
+            style={{ flex: 1, padding: '0.5rem', fontSize: '1rem' }}
+          />
+          <button 
+            onClick={handleAddFacility} 
+            disabled={adding || !newFacilityName.trim()}
+            style={{ padding: '0.5rem 1.5rem', fontSize: '1rem', cursor: adding ? 'not-allowed' : 'pointer' }}
+          >
+            {adding ? 'Adding...' : 'Add Facility'}
+          </button>
+        </div>
+      </div>
+      <div className="facilities-list">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Facility Name</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {facilities.length === 0 ? (
+              <tr>
+                <td colSpan="3" style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                  No facilities added yet. Add one above.
+                </td>
+              </tr>
+            ) : (
+              facilities.map((facility) => (
+                <tr key={facility.id}>
+                  <td>{facility.name}</td>
+                  <td>{new Date(facility.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <button 
+                      onClick={() => handleDeleteFacility(facility.id)}
+                      style={{ 
+                        padding: '0.25rem 0.75rem', 
+                        fontSize: '0.875rem',
+                        backgroundColor: '#ff6b6b',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function Settings() {
   const [settings, setSettings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -356,6 +514,7 @@ function App() {
           <Link to="/ongoing-cases">Ongoing Cases</Link>
           <Link to="/referrals">Referrals</Link>
           <Link to="/roles">Roles</Link>
+          <Link to="/facilities">Facilities</Link>
           <Link to="/settings">Settings</Link>
         </nav>
         <main className="content">
@@ -365,6 +524,7 @@ function App() {
             <Route path="/ongoing-cases" element={<OngoingCases />} />
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/roles" element={<Roles />} />
+            <Route path="/facilities" element={<Facilities />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>

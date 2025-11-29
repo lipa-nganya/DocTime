@@ -157,15 +157,19 @@ export default function SignUpScreen({ navigation }) {
       });
 
       if (response.data && response.data.token) {
-        // Save token FIRST
+        // Prevent double navigation
+        if (hasNavigated) {
+          console.log('⚠️ Already navigated, skipping');
+          return;
+        }
+        
         await AsyncStorage.setItem('authToken', response.data.token);
         await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
         await AsyncStorage.removeItem('isOnboarded');
         
-        // Wait a tiny bit to ensure AsyncStorage is written
-        await new Promise(resolve => setTimeout(resolve, 50));
+        setHasNavigated(true);
         
-        // Navigate to onboarding
+        // Navigate to onboarding immediately
         navigation.replace('Onboarding');
       } else {
         throw new Error('Invalid response from server');

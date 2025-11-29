@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, Case, Referral, Role, TeamMember, Settings } = require('../models');
+const { User, Case, Referral, Role, TeamMember, Settings, Facility } = require('../models');
 const { authenticateToken } = require('./auth');
 const { Op } = require('sequelize');
 
@@ -212,6 +212,75 @@ router.put('/settings/:key', async (req, res) => {
   } catch (error) {
     console.error('Error updating setting:', error);
     res.status(500).json({ error: 'Failed to update setting' });
+  }
+});
+
+/**
+ * Get all facilities (admin)
+ */
+router.get('/facilities', async (req, res) => {
+  try {
+    const facilities = await Facility.findAll({
+      order: [['name', 'ASC']]
+    });
+    res.json({ success: true, facilities });
+  } catch (error) {
+    console.error('Error fetching facilities:', error);
+    res.status(500).json({ error: 'Failed to fetch facilities' });
+  }
+});
+
+/**
+ * Create a facility (admin)
+ */
+router.post('/facilities', async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Facility name is required' });
+    }
+
+    // Check if facility already exists
+    let facility = await Facility.findOne({ where: { name: name.trim() } });
+    if (facility) {
+      return res.json({ success: true, facility, message: 'Facility already exists' });
+    }
+
+    facility = await Facility.create({ name: name.trim() });
+    res.status(201).json({ success: true, facility });
+  } catch (error) {
+    console.error('Error creating facility:', error);
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ error: 'Facility with this name already exists' });
+    }
+    res.status(500).json({ error: 'Failed to create facility' });
+  }
+});
+
+/**
+ * Delete a facility (admin)
+ */
+router.delete('/facilities/:id', async (req, res) => {
+  try {
+    const facility = await Facility.findByPk(req.params.id);
+    if (!facility) {
+      return res.status(404).json({ error: 'Facility not found' });
+    }
+
+    // Check if facility is used in any cases
+    const caseCount = await Case.count({ where: { facilityId: facility.id } });
+    if (caseCount > 0) {
+      return res.status(400).json({ 
+        error: `Cannot delete facility. It is used in ${caseCount} case(s).` 
+      });
+    }
+
+    await facility.destroy();
+    res.json({ success: true, message: 'Facility deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting facility:', error);
+    res.status(500).json({ error: 'Failed to delete facility' });
   }
 });
 
