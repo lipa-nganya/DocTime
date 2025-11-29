@@ -20,6 +20,11 @@ export default function SignUpScreen() {
   const otpRefs = useRef([]);
 
   const handleRequestOTP = async () => {
+    console.log('🔵 handleRequestOTP called');
+    console.log('🔵 phoneNumber:', phoneNumber);
+    console.log('🔵 requestingOTP:', requestingOTP);
+    console.log('🔵 loading:', loading);
+    
     if (!phoneNumber) {
       Alert.alert('Error', 'Please enter your phone number');
       return;
@@ -27,13 +32,17 @@ export default function SignUpScreen() {
 
     // Prevent double-clicking
     if (requestingOTP || loading) {
+      console.log('⚠️ Request already in progress, ignoring click');
       return;
     }
 
+    console.log('📱 Starting OTP request...');
     setRequestingOTP(true);
     setLoading(true);
+    
     try {
       console.log('📱 Requesting OTP for:', phoneNumber);
+      console.log('📱 API Base URL:', api.defaults.baseURL);
       const response = await api.post('/auth/request-otp', { phoneNumber });
       console.log('✅ OTP Response:', response.data);
       
@@ -64,11 +73,17 @@ export default function SignUpScreen() {
       }
     } catch (error) {
       console.error('❌ OTP Error:', error);
-      Alert.alert(
-        'Error', 
-        error.response?.data?.error || error.message || 'Failed to send OTP. Please check your internet connection.'
-      );
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL
+      });
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to send OTP. Please check your internet connection.';
+      Alert.alert('Error', errorMessage);
     } finally {
+      console.log('🔵 Resetting loading states');
       setLoading(false);
       setRequestingOTP(false);
     }
