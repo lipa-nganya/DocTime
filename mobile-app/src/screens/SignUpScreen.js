@@ -1,84 +1,110 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TextInput as RNTextInput } from 'react-native';
-import { TextInput, Button, Text, Snackbar, Alert } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { theme } from '../theme';
 
-export default function SignUpScreen() {
-  const navigation = useNavigation();
+export default function SignUpScreen({ navigation }) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState(['', '', '', '']);
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState('phone');
+  const [step, setStep] = useState('phone'); // 'phone', 'otp', 'pin'
   const [loading, setLoading] = useState(false);
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
   const otpRefs = useRef([]);
 
+  useEffect(() => {
+    if (step === 'otp' && otpRefs.current[0]) {
+      setTimeout(() => otpRefs.current[0].focus(), 100);
+    }
+  }, [step]);
+
+  const formatPhoneNumber = (phone) => {
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+      cleaned = '254' + cleaned.substring(1);
+    } else if (!cleaned.startsWith('254') && cleaned.length === 9 && cleaned.startsWith('7')) {
+      cleaned = '254' + cleaned;
+    }
+    return cleaned;
+  };
+
   const handleRequestOTP = async () => {
-    // Immediate feedback - change button text
-    setLoading(true);
-    
     if (!phoneNumber.trim()) {
       Alert.alert('Error', 'Please enter your phone number');
-      setLoading(false);
       return;
     }
-    
+
+    setLoading(true);
     try {
-      const response = await api.post('/auth/request-otp', { phoneNumber });
-      
-      if (response && response.data && response.data.success) {
-        setSnackbarMessage('OTP sent! Check your messages.');
-        setSnackbarVisible(true);
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+      const response = await api.post('/auth/request-otp', { phoneNumber: formattedPhone });
+
+      if (response.data && response.data.success) {
         setStep('otp');
-        
         if (response.data.otp) {
           const digits = response.data.otp.split('').slice(0, 4);
           setOtp(digits);
         }
-        
-        setTimeout(() => {
-          if (otpRefs.current[0]) {
-            otpRefs.current[0].focus();
-          }
-        }, 200);
       } else {
-        Alert.alert('Error', 'Invalid response from server');
+        Alert.alert('Error', response.data?.error || 'Failed to send OTP');
       }
     } catch (error) {
-      const msg = error.response?.data?.error || error.message || 'Failed to send OTP';
-      Alert.alert('Error', msg);
+      console.error('OTP send error:', error);
+      Alert.alert(
+        'Error',
+        error.response?.data?.error || 'Failed to send OTP. Please check your connection and try again.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const handleOtpChange = (index, value) => {
-    if (value && !/^\d$/.test(value)) return;
-    
+    if (value.length > 1) {
+      const pastedOtp = value.slice(0, 4).split('');
+      const newOtp = [...otp];
+      pastedOtp.forEach((digit, i) => {
+        if (index + i < 4) {
+          newOtp[index + i] = digit;
+        }
+      });
+      setOtp(newOtp);
+      if (index + pastedOtp.length < 4) {
+        otpRefs.current[Math.min(index + pastedOtp.length, 3)]?.focus();
+      }
+      return;
+    }
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    
-    if (value && index < 3 && otpRefs.current[index + 1]) {
-      otpRefs.current[index + 1].focus();
+
+    if (value && index < 3) {
+      otpRefs.current[index + 1]?.focus();
     }
   };
 
   const handleOtpKeyPress = (index, key) => {
-    if (key === 'Backspace' && !otp[index] && index > 0 && otpRefs.current[index - 1]) {
-      otpRefs.current[index - 1].focus();
+    if (key === 'Backspace' && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
     }
   };
 
   const handleVerifyOTP = () => {
     const otpCode = otp.join('');
     if (otpCode.length !== 4) {
-      Alert.alert('Error', 'Please enter 4-digit OTP');
+      Alert.alert('Error', 'Please enter the complete 4-digit OTP');
       return;
     }
     setStep('pin');
@@ -97,15 +123,16 @@ export default function SignUpScreen() {
 
     setLoading(true);
     try {
+      const formattedPhone = formatPhoneNumber(phoneNumber);
       const response = await api.post('/auth/signup', {
-        phoneNumber,
+        phoneNumber: formattedPhone,
         otp: otp.join(''),
         pin,
         role: 'Surgeon',
         otherRole: null
       });
 
-      if (response && response.data && response.data.token) {
+      if (response.data && response.data.token) {
         await AsyncStorage.setItem('authToken', response.data.token);
         await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
         
@@ -126,183 +153,262 @@ export default function SignUpScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Doc Time</Text>
-      <Text style={styles.subtitle}>Sign Up</Text>
-      
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={4000}
-      >
-        {snackbarMessage}
-      </Snackbar>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <View style={styles.content}>
+        <Text style={styles.title}>Doc Time</Text>
+        <Text style={styles.subtitle}>Sign Up</Text>
 
-      {step === 'phone' && (
-        <>
-          <TextInput
-            label="Phone Number"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            keyboardType="phone-pad"
-            mode="outlined"
-            style={styles.input}
-            placeholder="0712345678"
-          />
-          <Button
-            mode="contained"
-            onPress={() => {
-              console.log('Button pressed, phone:', phoneNumber);
-              handleRequestOTP();
-            }}
-            loading={loading}
-            disabled={loading}
-            style={styles.button}
-          >
-            {loading ? 'Sending...' : 'Send OTP'}
-          </Button>
-          <Button
-            mode="text"
-            onPress={() => navigation.navigate('Login')}
-            style={styles.linkButton}
-          >
-            Already have an account? Login
-          </Button>
-        </>
-      )}
-
-      {step === 'otp' && (
-        <>
-          <Text style={styles.otpLabel}>Enter 4-digit OTP</Text>
-          <View style={styles.otpContainer}>
-            {[0, 1, 2, 3].map((index) => (
-              <RNTextInput
-                key={index}
-                ref={(ref) => (otpRefs.current[index] = ref)}
-                style={[
-                  styles.otpInput,
-                  { borderColor: otp[index] ? theme.colors.primary : theme.colors.textSecondary }
-                ]}
-                value={otp[index]}
-                onChangeText={(value) => handleOtpChange(index, value)}
-                onKeyPress={({ nativeEvent }) => handleOtpKeyPress(index, nativeEvent.key)}
-                keyboardType="number-pad"
-                maxLength={1}
-                textAlign="center"
-                textColor={theme.colors.text}
-                autoFocus={index === 0}
+        {step === 'phone' && (
+          <>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Phone Number</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0712345678"
+                placeholderTextColor="#666"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                keyboardType="phone-pad"
+                autoFocus
+                editable={!loading}
               />
-            ))}
-          </View>
-          <Button
-            mode="contained"
-            onPress={handleVerifyOTP}
-            style={styles.button}
-          >
-            Verify OTP
-          </Button>
-          <Button
-            mode="text"
-            onPress={() => {
-              setOtp(['', '', '', '']);
-              otpRefs.current.forEach((ref) => ref?.clear());
-              setStep('phone');
-            }}
-            style={styles.linkButton}
-          >
-            Resend OTP
-          </Button>
-        </>
-      )}
+            </View>
 
-      {step === 'pin' && (
-        <>
-          <TextInput
-            label="Create PIN (4-6 digits)"
-            value={pin}
-            onChangeText={setPin}
-            keyboardType="number-pad"
-            mode="outlined"
-            style={styles.input}
-            textColor={theme.colors.text}
-            secureTextEntry
-            maxLength={6}
-          />
-          <TextInput
-            label="Confirm PIN"
-            value={confirmPin}
-            onChangeText={setConfirmPin}
-            keyboardType="number-pad"
-            mode="outlined"
-            style={styles.input}
-            textColor={theme.colors.text}
-            secureTextEntry
-            maxLength={6}
-          />
-          <Button
-            mode="contained"
-            onPress={handleSignUp}
-            loading={loading}
-            style={styles.button}
-          >
-            Sign Up
-          </Button>
-        </>
-      )}
-    </View>
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleRequestOTP}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={theme.colors.background} />
+              ) : (
+                <Text style={styles.buttonText}>Send OTP</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => navigation.navigate('Login')}
+            >
+              <Text style={styles.linkText}>Already have an account? Login</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {step === 'otp' && (
+          <>
+            <Text style={styles.otpTitle}>Enter 4-digit OTP</Text>
+            <Text style={styles.otpSubtitle}>
+              We've sent a code to {formatPhoneNumber(phoneNumber)}
+            </Text>
+
+            <View style={styles.otpContainer}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  ref={(ref) => (otpRefs.current[index] = ref)}
+                  style={styles.otpInput}
+                  value={digit}
+                  onChangeText={(value) => handleOtpChange(index, value)}
+                  onKeyPress={({ nativeEvent }) => handleOtpKeyPress(index, nativeEvent.key)}
+                  keyboardType="number-pad"
+                  maxLength={1}
+                  selectTextOnFocus
+                  editable={!loading}
+                />
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleVerifyOTP}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={theme.colors.background} />
+              ) : (
+                <Text style={styles.buttonText}>Verify OTP</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => {
+                setOtp(['', '', '', '']);
+                setStep('phone');
+              }}
+            >
+              <Text style={styles.linkText}>Resend OTP</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {step === 'pin' && (
+          <>
+            <Text style={styles.otpTitle}>Create PIN</Text>
+            <Text style={styles.otpSubtitle}>
+              Create a 4-6 digit PIN for secure login
+            </Text>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>PIN</Text>
+              <TextInput
+                style={styles.pinInput}
+                placeholder="0000"
+                placeholderTextColor="#666"
+                value={pin}
+                onChangeText={(text) => {
+                  const numericText = text.replace(/\D/g, '').slice(0, 6);
+                  setPin(numericText);
+                }}
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={6}
+                autoFocus
+                editable={!loading}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Confirm PIN</Text>
+              <TextInput
+                style={styles.pinInput}
+                placeholder="0000"
+                placeholderTextColor="#666"
+                value={confirmPin}
+                onChangeText={(text) => {
+                  const numericText = text.replace(/\D/g, '').slice(0, 6);
+                  setConfirmPin(numericText);
+                }}
+                keyboardType="number-pad"
+                secureTextEntry
+                maxLength={6}
+                editable={!loading}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, (pin.length < 4 || pin !== confirmPin || loading) && styles.buttonDisabled]}
+              onPress={handleSignUp}
+              disabled={pin.length < 4 || pin !== confirmPin || loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={theme.colors.background} />
+              ) : (
+                <Text style={styles.buttonText}>Sign Up</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: theme.spacing.lg,
-    justifyContent: 'center',
     backgroundColor: theme.colors.background,
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: theme.colors.primary,
+    marginBottom: 10,
     textAlign: 'center',
-    marginBottom: theme.spacing.sm,
   },
   subtitle: {
     fontSize: 18,
     color: theme.colors.textSecondary,
+    marginBottom: 40,
     textAlign: 'center',
-    marginBottom: theme.spacing.xl,
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    color: theme.colors.text,
+    marginBottom: 8,
   },
   input: {
-    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface || '#f5f5f5',
+    borderWidth: 1,
+    borderColor: theme.colors.textSecondary || '#ccc',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    color: theme.colors.text,
+  },
+  pinInput: {
+    backgroundColor: theme.colors.surface || '#f5f5f5',
+    borderWidth: 1,
+    borderColor: theme.colors.textSecondary || '#ccc',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    color: theme.colors.text,
+    textAlign: 'center',
   },
   button: {
-    marginTop: theme.spacing.md,
     backgroundColor: theme.colors.primary,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: theme.colors.background,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   linkButton: {
-    marginTop: theme.spacing.md,
+    marginTop: 20,
+    alignItems: 'center',
   },
-  otpLabel: {
+  linkText: {
+    color: theme.colors.primary,
+    fontSize: 16,
+  },
+  otpTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  otpSubtitle: {
     fontSize: 16,
     color: theme.colors.textSecondary,
+    marginBottom: 40,
     textAlign: 'center',
-    marginBottom: theme.spacing.md,
   },
   otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: theme.spacing.lg,
+    justifyContent: 'space-between',
+    marginBottom: 30,
   },
   otpInput: {
     width: 60,
     height: 60,
-    marginHorizontal: 8,
-    textAlign: 'center',
-    fontSize: 24,
-    fontWeight: 'bold',
+    backgroundColor: theme.colors.surface || '#f5f5f5',
     borderWidth: 1,
+    borderColor: theme.colors.textSecondary || '#ccc',
     borderRadius: 8,
-    backgroundColor: theme.colors.background,
+    fontSize: 24,
+    textAlign: 'center',
+    color: theme.colors.primary,
+    fontWeight: 'bold',
   },
 });
