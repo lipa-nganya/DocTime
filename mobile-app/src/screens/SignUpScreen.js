@@ -21,72 +21,71 @@ export default function SignUpScreen() {
   const otpRefs = useRef([]);
 
   const handleRequestOTP = async () => {
+    // Show immediate feedback
+    Alert.alert('Info', 'Button clicked! Starting OTP request...', [{ text: 'OK' }]);
+    
     try {
-      setDebugInfo('Starting OTP request...');
-      
       if (!phoneNumber || phoneNumber.trim() === '') {
-        setDebugInfo('Error: No phone number');
         Alert.alert('Error', 'Please enter your phone number');
         return;
       }
 
       // Prevent double-clicking
       if (requestingOTP || loading) {
-        setDebugInfo('Already requesting, ignoring...');
         return;
       }
 
       setRequestingOTP(true);
       setLoading(true);
-      setDebugInfo(`Calling API: ${api.defaults.baseURL}/auth/request-otp`);
       
       console.log('📱 Requesting OTP for:', phoneNumber);
       console.log('📱 API URL:', api.defaults.baseURL);
+      
+      Alert.alert('Info', `Calling API: ${api.defaults.baseURL}/auth/request-otp`, [{ text: 'OK' }]);
       
       const response = await api.post('/auth/request-otp', { phoneNumber });
       
       console.log('✅ OTP Response:', response.data);
       console.log('✅ Response status:', response.status);
       
-      setDebugInfo(`Response received: ${JSON.stringify(response.data)}`);
-      
       // Check if response is successful
       if (!response.data || !response.data.success) {
-        setDebugInfo(`Error: Invalid response - ${JSON.stringify(response.data)}`);
+        Alert.alert('Error', `Invalid response: ${JSON.stringify(response.data)}`);
         throw new Error(response.data?.message || 'Invalid response from server');
       }
       
-      // Show snackbar notification
-      setSnackbarMessage('OTP sent to your phone! Please check your messages.');
-      setSnackbarVisible(true);
-      
-      // Automatically redirect to OTP screen
-      console.log('🔄 Changing step to otp');
-      setDebugInfo('Changing step to otp...');
-      setStep('otp');
-      
-      // In dev mode, auto-fill OTP if provided
-      if (response.data?.otp) {
-        console.log('📝 Auto-filling OTP:', response.data.otp);
-        const otpDigits = response.data.otp.split('').slice(0, 4);
-        setOtp(otpDigits);
-        setDebugInfo(`OTP auto-filled: ${otpDigits.join('')}`);
-        // Focus first input
-        setTimeout(() => {
-          if (otpRefs.current[0]) {
-            otpRefs.current[0].focus();
+      Alert.alert('Success', `OTP sent! Response: ${JSON.stringify(response.data)}`, [
+        { 
+          text: 'OK', 
+          onPress: () => {
+            // Show snackbar notification
+            setSnackbarMessage('OTP sent to your phone! Please check your messages.');
+            setSnackbarVisible(true);
+            
+            // Automatically redirect to OTP screen
+            setStep('otp');
+            
+            // In dev mode, auto-fill OTP if provided
+            if (response.data?.otp) {
+              const otpDigits = response.data.otp.split('').slice(0, 4);
+              setOtp(otpDigits);
+              // Focus first input
+              setTimeout(() => {
+                if (otpRefs.current[0]) {
+                  otpRefs.current[0].focus();
+                }
+              }, 100);
+            } else {
+              // Focus first OTP input
+              setTimeout(() => {
+                if (otpRefs.current[0]) {
+                  otpRefs.current[0].focus();
+                }
+              }, 100);
+            }
           }
-        }, 100);
-      } else {
-        console.log('📝 No OTP in response, user will enter manually');
-        setDebugInfo('No OTP in response, user will enter manually');
-        // Focus first OTP input
-        setTimeout(() => {
-          if (otpRefs.current[0]) {
-            otpRefs.current[0].focus();
-          }
-        }, 100);
-      }
+        }
+      ]);
     } catch (error) {
       console.error('❌ OTP Error:', error);
       console.error('❌ Error details:', {
@@ -97,16 +96,16 @@ export default function SignUpScreen() {
         baseURL: error.config?.baseURL
       });
       
-      let errorMessage = 'Failed to send OTP. ';
+      let errorMessage = 'Failed to send OTP.\n\n';
       if (error.response) {
-        errorMessage += error.response.data?.error || `Server error (${error.response.status})`;
-        setDebugInfo(`Error ${error.response.status}: ${error.response.data?.error || 'Unknown error'}`);
+        errorMessage += `Status: ${error.response.status}\n`;
+        errorMessage += `Error: ${JSON.stringify(error.response.data)}`;
       } else if (error.request) {
-        errorMessage += 'No response from server. Check your internet connection.';
-        setDebugInfo('Error: No response from server');
+        errorMessage += 'No response from server.\n';
+        errorMessage += 'Check your internet connection.\n';
+        errorMessage += `API URL: ${api.defaults.baseURL}`;
       } else {
-        errorMessage += error.message;
-        setDebugInfo(`Error: ${error.message}`);
+        errorMessage += `Error: ${error.message}`;
       }
       
       Alert.alert('Error', errorMessage);
