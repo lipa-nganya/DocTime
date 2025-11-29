@@ -105,14 +105,19 @@ export default function SignUpScreen() {
         otherRole: null
       });
 
-      await AsyncStorage.setItem('authToken', response.data.token);
-      await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Onboarding' }],
-      });
+      if (response && response.data && response.data.token) {
+        await AsyncStorage.setItem('authToken', response.data.token);
+        await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Onboarding' }],
+        });
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
+      console.error('Signup error:', error);
       const msg = error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || error.message || 'Failed to sign up';
       Alert.alert('Sign Up Failed', msg);
     } finally {

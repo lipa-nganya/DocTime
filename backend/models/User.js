@@ -30,6 +30,17 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true
     },
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    prefix: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isIn: [['Mr', 'Miss', 'Dr', 'Mrs', null]]
+      }
+    },
     biometricEnabled: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
