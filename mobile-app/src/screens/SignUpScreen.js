@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { TextInput, Button, Text, ActivityIndicator } from 'react-native-paper';
+import React, { useState, useRef } from 'react';
+import { View, StyleSheet, TextInput as RNTextInput } from 'react-native';
+import { TextInput, Button, Text, Snackbar, Alert } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
@@ -9,12 +9,15 @@ import { theme } from '../theme';
 export default function SignUpScreen() {
   const navigation = useNavigation();
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '']);
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [step, setStep] = useState('phone'); // 'phone', 'otp', 'pin'
   const [loading, setLoading] = useState(false);
   const [requestingOTP, setRequestingOTP] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const otpRefs = useRef([]);
 
   const handleRequestOTP = async () => {
     if (!phoneNumber) {
@@ -31,28 +34,36 @@ export default function SignUpScreen() {
     setLoading(true);
     try {
       console.log('📱 Requesting OTP for:', phoneNumber);
-      console.log('📱 API Base URL:', api.defaults.baseURL);
       const response = await api.post('/auth/request-otp', { phoneNumber });
       console.log('✅ OTP Response:', response.data);
+      
+      // Show snackbar notification
+      setSnackbarMessage('OTP sent to your phone! Please check your messages.');
+      setSnackbarVisible(true);
       
       // Automatically redirect to OTP screen
       setStep('otp');
       
-      // In dev mode, show OTP if provided
+      // In dev mode, auto-fill OTP if provided
       if (response.data.otp) {
-        Alert.alert('OTP Sent', `Your OTP is: ${response.data.otp}\n\n(This is shown in development mode)`);
+        const otpDigits = response.data.otp.split('');
+        setOtp(otpDigits);
+        // Focus first input
+        setTimeout(() => {
+          if (otpRefs.current[0]) {
+            otpRefs.current[0].focus();
+          }
+        }, 100);
       } else {
-        Alert.alert('Success', 'OTP sent to your phone');
+        // Focus first OTP input
+        setTimeout(() => {
+          if (otpRefs.current[0]) {
+            otpRefs.current[0].focus();
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('❌ OTP Error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url,
-        baseURL: error.config?.baseURL
-      });
       Alert.alert(
         'Error', 
         error.response?.data?.error || error.message || 'Failed to send OTP. Please check your internet connection.'
@@ -63,8 +74,38 @@ export default function SignUpScreen() {
     }
   };
 
-  const handleVerifyOTP = async () => {
-    if (!otp || otp.length !== 4) {
+  const handleOtpChange = (index, value) => {
+    // Only allow numbers
+    if (value && !/^\d$/.test(value)) {
+      return;
+    }
+    
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    
+    // Auto-focus next input
+    if (value && index < 3 && otpRefs.current[index + 1]) {
+      otpRefs.current[index + 1].focus();
+    }
+    
+    // Auto-verify if all 4 digits are entered
+    if (newOtp.every(digit => digit !== '') && newOtp.length === 4) {
+      const otpString = newOtp.join('');
+      handleVerifyOTP(otpString);
+    }
+  };
+
+  const handleOtpKeyPress = (index, key) => {
+    // Handle backspace
+    if (key === 'Backspace' && !otp[index] && index > 0 && otpRefs.current[index - 1]) {
+      otpRefs.current[index - 1].focus();
+    }
+  };
+
+  const handleVerifyOTP = async (otpString = null) => {
+    const otpCode = otpString || otp.join('');
+    if (!otpCode || otpCode.length !== 4) {
       Alert.alert('Error', 'Please enter a valid 4-digit OTP');
       return;
     }
@@ -87,7 +128,7 @@ export default function SignUpScreen() {
     try {
       const response = await api.post('/auth/signup', {
         phoneNumber,
-        otp,
+        otp: otp.join(''),
         pin,
         role: 'Surgeon', // Will be set in onboarding
         otherRole: null
@@ -108,6 +149,18 @@ export default function SignUpScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Doc Time</Text>
       <Text style={styles.subtitle}>Sign Up</Text>
+      
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={4000}
+        action={{
+          label: 'OK',
+          onPress: () => setSnackbarVisible(false),
+        }}
+      >
+        {snackbarMessage}
+      </Snackbar>
 
       {step === 'phone' && (
         <>
@@ -140,25 +193,43 @@ export default function SignUpScreen() {
 
       {step === 'otp' && (
         <>
-          <TextInput
-            label="Enter OTP (4 digits)"
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType="number-pad"
-            mode="outlined"
-            style={styles.input}
-            maxLength={4}
-          />
+          <Text style={styles.otpLabel}>Enter 4-digit OTP</Text>
+          <View style={styles.otpContainer}>
+            {[0, 1, 2, 3].map((index) => (
+              <RNTextInput
+                key={index}
+                ref={(ref) => (otpRefs.current[index] = ref)}
+                style={[
+                  styles.otpInput,
+                  {
+                    borderColor: otp[index] ? theme.colors.primary : theme.colors.textSecondary,
+                  }
+                ]}
+                value={otp[index]}
+                onChangeText={(value) => handleOtpChange(index, value)}
+                onKeyPress={({ nativeEvent }) => handleOtpKeyPress(index, nativeEvent.key)}
+                keyboardType="number-pad"
+                maxLength={1}
+                textAlign="center"
+                textColor={theme.colors.text}
+                autoFocus={index === 0}
+              />
+            ))}
+          </View>
           <Button
             mode="contained"
-            onPress={handleVerifyOTP}
+            onPress={() => handleVerifyOTP()}
             style={styles.button}
           >
             Verify OTP
           </Button>
           <Button
             mode="text"
-            onPress={() => setStep('phone')}
+            onPress={() => {
+              setOtp(['', '', '', '']);
+              otpRefs.current.forEach((ref) => ref?.clear());
+              setStep('phone');
+            }}
             style={styles.linkButton}
           >
             Resend OTP
@@ -234,5 +305,26 @@ const styles = StyleSheet.create({
   linkButton: {
     marginTop: theme.spacing.md,
   },
+  otpLabel: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  otpInput: {
+    width: 60,
+    height: 60,
+    marginHorizontal: 8,
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    borderWidth: 1,
+    borderRadius: 8,
+    backgroundColor: theme.colors.background,
+  },
 });
-
