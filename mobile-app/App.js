@@ -173,49 +173,41 @@ export default function App() {
         }}
       >
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {!isAuthenticated ? (
-            <>
-              <Stack.Screen name="SignUp" component={SignUpScreen} />
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-            </>
-          ) : !isOnboarded ? (
-            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          ) : (
-            <>
-              <Stack.Screen name="MainTabs" component={MainTabs} />
-              <Stack.Screen 
-                name="NewCase" 
-                component={NewCaseScreen}
-                options={{ 
-                  headerShown: true,
-                  title: 'New Case',
-                  headerStyle: { backgroundColor: theme.colors.primary },
-                  headerTintColor: theme.colors.white
-                }}
-              />
-              <Stack.Screen 
-                name="CaseDetails" 
-                component={CaseDetailsScreen}
-                options={{ 
-                  headerShown: true,
-                  title: 'Case Details',
-                  headerStyle: { backgroundColor: theme.colors.primary },
-                  headerTintColor: theme.colors.white
-                }}
-              />
-              <Stack.Screen 
-                name="ReferCase" 
-                component={ReferCaseScreen}
-                options={{ 
-                  headerShown: true,
-                  title: 'Refer Case',
-                  headerStyle: { backgroundColor: theme.colors.primary },
-                  headerTintColor: theme.colors.white
-                }}
-              />
-            </>
-          )}
+          {/* Always include all screens - let each screen handle its own auth check */}
+          <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <Stack.Screen 
+            name="NewCase" 
+            component={NewCaseScreen}
+            options={{ 
+              headerShown: true,
+              title: 'New Case',
+              headerStyle: { backgroundColor: theme.colors.primary },
+              headerTintColor: theme.colors.white
+            }}
+          />
+          <Stack.Screen 
+            name="CaseDetails" 
+            component={CaseDetailsScreen}
+            options={{ 
+              headerShown: true,
+              title: 'Case Details',
+              headerStyle: { backgroundColor: theme.colors.primary },
+              headerTintColor: theme.colors.white
+            }}
+          />
+          <Stack.Screen 
+            name="ReferCase" 
+            component={ReferCaseScreen}
+            options={{ 
+              headerShown: true,
+              title: 'Refer Case',
+              headerStyle: { backgroundColor: theme.colors.primary },
+              headerTintColor: theme.colors.white
+            }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>

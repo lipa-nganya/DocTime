@@ -25,9 +25,9 @@ export default function SignUpScreen({ navigation }) {
   const otpRefs = useRef([]);
   const phoneInputRef = useRef(null);
 
-  // Check if user is already authenticated when screen focuses
+  // Check if user is already authenticated when screen focuses or mounts
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', async () => {
+    const checkAuthAndRedirect = async () => {
       const token = await AsyncStorage.getItem('authToken');
       const onboarded = await AsyncStorage.getItem('isOnboarded');
       
@@ -38,7 +38,13 @@ export default function SignUpScreen({ navigation }) {
         // User is authenticated and onboarded, navigate to home
         navigation.replace('MainTabs');
       }
-    });
+    };
+
+    // Check immediately on mount
+    checkAuthAndRedirect();
+
+    // Also check when screen focuses
+    const unsubscribe = navigation.addListener('focus', checkAuthAndRedirect);
 
     return unsubscribe;
   }, [navigation]);

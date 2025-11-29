@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { TextInput, Button, Text, SegmentedButtons } from 'react-native-paper';
 import RNPickerSelect from 'react-native-picker-select';
@@ -23,6 +23,21 @@ export default function OnboardingScreen() {
   const [role, setRole] = useState('');
   const [otherRole, setOtherRole] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Check auth on mount and focus
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        // No token, redirect to signup
+        navigation.replace('SignUp');
+      }
+    };
+
+    checkAuth();
+    const unsubscribe = navigation.addListener('focus', checkAuth);
+    return unsubscribe;
+  }, [navigation]);
 
   const handleComplete = async () => {
     if (!firstName.trim()) {
@@ -63,30 +78,48 @@ export default function OnboardingScreen() {
         hasToken: !!token
       });
       
-      const response = await api.put('/auth/profile', {
+      const requestData = {
         firstName: firstName.trim(),
         prefix,
         role,
         otherRole: role === 'Other' ? otherRole.trim() : null
-      });
+      };
+
+      console.log('📤 Sending profile update:', requestData);
+      console.log('📤 API URL:', api.defaults.baseURL);
+      console.log('📤 Token exists:', !!token);
+
+      const response = await api.put('/auth/profile', requestData);
 
       console.log('✅ Profile updated:', response.data);
       console.log('✅ Response status:', response.status);
       console.log('✅ Response headers:', response.headers);
 
-      // Verify response is successful - check for success flag or status code
+      // Check if response indicates success (status 200-299 or success flag)
       if (response.status >= 200 && response.status < 300) {
-        // Success - response is valid even without explicit success flag
-        console.log('✅ Profile update successful');
+        // Success - check if response has data
+        if (response.data) {
+          console.log('✅ Profile update successful, saving onboarding status');
+          
+          // Save onboarding status
+          await AsyncStorage.setItem('isOnboarded', 'true');
+          
+          // Small delay to ensure AsyncStorage is written
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Navigate to MainTabs (Home screen) using reset to clear stack
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'MainTabs' }],
+            })
+          );
+        } else {
+          throw new Error('Profile update failed: Empty response from server');
+        }
       } else {
         throw new Error(`Profile update failed: HTTP ${response.status}`);
       }
-
-      // Save onboarding status
-      await AsyncStorage.setItem('isOnboarded', 'true');
-      
-      // Navigate to MainTabs (Home screen) using replace to prevent going back
-      navigation.replace('MainTabs');
     } catch (error) {
       console.error('❌ Onboarding error:', error);
       console.error('❌ Error response:', error.response?.data);
