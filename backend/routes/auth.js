@@ -98,16 +98,34 @@ router.post('/request-otp', [
  * Verify OTP and sign up
  */
 router.post('/signup', [
-  body('phoneNumber').isMobilePhone('en-KE'),
-  body('otp').isLength({ min: 4, max: 4 }),
-  body('pin').isLength({ min: 4, max: 6 }),
-  body('role').isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']),
+  // Accept phone number in various formats (0712345678, +254712345678, 254712345678)
+  body('phoneNumber')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .custom((value) => {
+      // Remove all non-digit characters except +
+      const cleaned = value.replace(/[\s\-\(\)]/g, '');
+      // Check if it's a valid Kenyan mobile format
+      // Accepts: 0712345678, +254712345678, 254712345678, 712345678
+      const kenyanMobileRegex = /^(\+?254|0)?7\d{8}$/;
+      if (!kenyanMobileRegex.test(cleaned)) {
+        throw new Error('Invalid Kenyan mobile phone number format');
+      }
+      return true;
+    }),
+  body('otp').isLength({ min: 4, max: 4 }).withMessage('OTP must be 4 digits'),
+  body('pin').isLength({ min: 4, max: 6 }).withMessage('PIN must be between 4 and 6 digits'),
+  body('role').isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']).withMessage('Invalid role'),
   body('otherRole').optional().isString()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.error('Validation errors:', errors.array());
+      return res.status(400).json({ 
+        error: errors.array()[0]?.msg || 'Invalid value',
+        errors: errors.array() 
+      });
     }
 
     const { phoneNumber, otp, pin, role, otherRole } = req.body;
