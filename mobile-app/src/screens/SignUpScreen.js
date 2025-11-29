@@ -40,10 +40,14 @@ export default function SignUpScreen() {
       
       console.log('📱 Requesting OTP for:', phoneNumber);
       console.log('📱 API URL:', api.defaults.baseURL);
+      console.log('📱 Full endpoint:', `${api.defaults.baseURL}/auth/request-otp`);
       
-      Alert.alert('Info', `Calling API: ${api.defaults.baseURL}/auth/request-otp`, [{ text: 'OK' }]);
-      
-      const response = await api.post('/auth/request-otp', { phoneNumber });
+      const response = await api.post('/auth/request-otp', { phoneNumber }, {
+        timeout: 60000,
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        }
+      });
       
       console.log('✅ OTP Response:', response.data);
       console.log('✅ Response status:', response.status);
