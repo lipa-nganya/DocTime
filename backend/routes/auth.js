@@ -318,31 +318,45 @@ router.post('/login', [
  * Update user profile
  */
 router.put('/profile', authenticateToken, [
-  body('firstName').optional().isString().trim(),
-  body('prefix').optional().isIn(['Mr', 'Miss', 'Dr', 'Mrs']),
-  body('role').optional().isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']),
-  body('otherRole').optional().isString().trim()
+  body('firstName').notEmpty().withMessage('First name is required').isString().trim(),
+  body('prefix').notEmpty().withMessage('Prefix is required').isIn(['Mr', 'Miss', 'Dr', 'Mrs']),
+  body('role').notEmpty().withMessage('Role is required').isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']),
+  body('otherRole').optional({ nullable: true }).isString().trim()
 ], async (req, res) => {
   try {
+    console.log('📝 Profile update request:', {
+      userId: req.userId,
+      firstName: req.body.firstName,
+      prefix: req.body.prefix,
+      role: req.body.role,
+      otherRole: req.body.otherRole
+    });
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.error('❌ Validation errors:', errors.array());
+      return res.status(400).json({ 
+        error: errors.array()[0]?.msg || 'Validation failed',
+        errors: errors.array() 
+      });
     }
 
     const user = await User.findByPk(req.userId);
     if (!user) {
+      console.error('❌ User not found:', req.userId);
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const updateData = {};
-    if (req.body.firstName !== undefined) updateData.firstName = req.body.firstName;
-    if (req.body.prefix !== undefined) updateData.prefix = req.body.prefix;
-    if (req.body.role !== undefined) updateData.role = req.body.role;
-    if (req.body.otherRole !== undefined) {
-      updateData.otherRole = req.body.role === 'Other' ? req.body.otherRole : null;
-    }
+    const updateData = {
+      firstName: req.body.firstName.trim(),
+      prefix: req.body.prefix,
+      role: req.body.role,
+      otherRole: req.body.role === 'Other' ? (req.body.otherRole?.trim() || null) : null
+    };
 
+    console.log('📝 Updating user with:', updateData);
     await user.update(updateData);
+    console.log('✅ User updated successfully');
 
     res.json({
       success: true,

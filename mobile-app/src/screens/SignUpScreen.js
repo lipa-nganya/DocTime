@@ -155,11 +155,11 @@ export default function SignUpScreen({ navigation }) {
       if (response.data && response.data.token) {
         await AsyncStorage.setItem('authToken', response.data.token);
         await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        // Don't set isOnboarded yet - user needs to complete onboarding
+        await AsyncStorage.removeItem('isOnboarded');
         
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Onboarding' }],
-        });
+        // Use replace instead of reset to avoid navigation stack issues
+        navigation.replace('Onboarding');
       } else {
         throw new Error('Invalid response from server');
       }

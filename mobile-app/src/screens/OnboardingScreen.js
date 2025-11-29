@@ -47,12 +47,21 @@ export default function OnboardingScreen() {
 
     setLoading(true);
     try {
-      await api.put('/auth/profile', {
+      console.log('📝 Updating profile:', {
         firstName: firstName.trim(),
         prefix,
         role,
         otherRole: role === 'Other' ? otherRole.trim() : null
       });
+      
+      const response = await api.put('/auth/profile', {
+        firstName: firstName.trim(),
+        prefix,
+        role,
+        otherRole: role === 'Other' ? otherRole.trim() : null
+      });
+
+      console.log('✅ Profile updated:', response.data);
 
       await AsyncStorage.setItem('isOnboarded', 'true');
       navigation.reset({
@@ -60,8 +69,11 @@ export default function OnboardingScreen() {
         routes: [{ name: 'MainTabs' }],
       });
     } catch (error) {
-      console.error('Onboarding error:', error);
-      Alert.alert('Error', error.response?.data?.error || 'Failed to save profile');
+      console.error('❌ Onboarding error:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      const errorMsg = error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || 'Failed to save profile';
+      Alert.alert('Error', errorMsg);
     } finally {
       setLoading(false);
     }
@@ -91,6 +103,12 @@ export default function OnboardingScreen() {
           label: p
         }))}
         style={styles.segmentedButtons}
+        theme={{
+          colors: {
+            secondaryContainer: theme.colors.primary,
+            onSecondaryContainer: theme.colors.white,
+          }
+        }}
       />
 
       <Text style={styles.sectionTitle}>What role best describes you?</Text>
