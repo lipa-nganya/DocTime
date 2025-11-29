@@ -34,7 +34,12 @@ export default function SignUpScreen() {
       setRequestingOTP(true);
       setLoading(true);
       
+      console.log('📱 Requesting OTP for:', phoneNumber);
+      console.log('📱 API URL:', api.defaults.baseURL);
+      
       const response = await api.post('/auth/request-otp', { phoneNumber });
+      
+      console.log('✅ OTP Response:', response.data);
       
       // Show snackbar notification
       setSnackbarMessage('OTP sent to your phone! Please check your messages.');
@@ -62,7 +67,24 @@ export default function SignUpScreen() {
         }, 100);
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to send OTP. Please check your internet connection.';
+      console.error('❌ OTP Error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL
+      });
+      
+      let errorMessage = 'Failed to send OTP. ';
+      if (error.response) {
+        errorMessage += error.response.data?.error || `Server error (${error.response.status})`;
+      } else if (error.request) {
+        errorMessage += 'No response from server. Check your internet connection.';
+      } else {
+        errorMessage += error.message;
+      }
+      
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
@@ -158,6 +180,13 @@ export default function SignUpScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Doc Time</Text>
       <Text style={styles.subtitle}>Sign Up</Text>
+      
+      {/* Debug: Show current step */}
+      {__DEV__ && (
+        <Text style={{ fontSize: 10, color: 'gray', textAlign: 'center', marginBottom: 10 }}>
+          Step: {step} | Loading: {loading ? 'Yes' : 'No'}
+        </Text>
+      )}
       
       <Snackbar
         visible={snackbarVisible}
