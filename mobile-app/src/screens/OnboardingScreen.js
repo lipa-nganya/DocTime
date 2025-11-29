@@ -186,6 +186,7 @@ const styles = StyleSheet.create({
   },
   segmentedButtons: {
     marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.background,
   },
   pickerContainer: {
     marginBottom: theme.spacing.md,
