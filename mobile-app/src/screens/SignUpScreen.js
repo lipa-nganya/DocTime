@@ -17,22 +17,28 @@ export default function SignUpScreen() {
   const [requestingOTP, setRequestingOTP] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
   const otpRefs = useRef([]);
 
   const handleRequestOTP = async () => {
     try {
+      setDebugInfo('Starting OTP request...');
+      
       if (!phoneNumber || phoneNumber.trim() === '') {
+        setDebugInfo('Error: No phone number');
         Alert.alert('Error', 'Please enter your phone number');
         return;
       }
 
       // Prevent double-clicking
       if (requestingOTP || loading) {
+        setDebugInfo('Already requesting, ignoring...');
         return;
       }
 
       setRequestingOTP(true);
       setLoading(true);
+      setDebugInfo(`Calling API: ${api.defaults.baseURL}/auth/request-otp`);
       
       console.log('📱 Requesting OTP for:', phoneNumber);
       console.log('📱 API URL:', api.defaults.baseURL);
@@ -42,8 +48,11 @@ export default function SignUpScreen() {
       console.log('✅ OTP Response:', response.data);
       console.log('✅ Response status:', response.status);
       
+      setDebugInfo(`Response received: ${JSON.stringify(response.data)}`);
+      
       // Check if response is successful
       if (!response.data || !response.data.success) {
+        setDebugInfo(`Error: Invalid response - ${JSON.stringify(response.data)}`);
         throw new Error(response.data?.message || 'Invalid response from server');
       }
       
@@ -53,6 +62,7 @@ export default function SignUpScreen() {
       
       // Automatically redirect to OTP screen
       console.log('🔄 Changing step to otp');
+      setDebugInfo('Changing step to otp...');
       setStep('otp');
       
       // In dev mode, auto-fill OTP if provided
@@ -60,6 +70,7 @@ export default function SignUpScreen() {
         console.log('📝 Auto-filling OTP:', response.data.otp);
         const otpDigits = response.data.otp.split('').slice(0, 4);
         setOtp(otpDigits);
+        setDebugInfo(`OTP auto-filled: ${otpDigits.join('')}`);
         // Focus first input
         setTimeout(() => {
           if (otpRefs.current[0]) {
@@ -68,6 +79,7 @@ export default function SignUpScreen() {
         }, 100);
       } else {
         console.log('📝 No OTP in response, user will enter manually');
+        setDebugInfo('No OTP in response, user will enter manually');
         // Focus first OTP input
         setTimeout(() => {
           if (otpRefs.current[0]) {
@@ -88,10 +100,13 @@ export default function SignUpScreen() {
       let errorMessage = 'Failed to send OTP. ';
       if (error.response) {
         errorMessage += error.response.data?.error || `Server error (${error.response.status})`;
+        setDebugInfo(`Error ${error.response.status}: ${error.response.data?.error || 'Unknown error'}`);
       } else if (error.request) {
         errorMessage += 'No response from server. Check your internet connection.';
+        setDebugInfo('Error: No response from server');
       } else {
         errorMessage += error.message;
+        setDebugInfo(`Error: ${error.message}`);
       }
       
       Alert.alert('Error', errorMessage);
@@ -190,12 +205,11 @@ export default function SignUpScreen() {
       <Text style={styles.title}>Doc Time</Text>
       <Text style={styles.subtitle}>Sign Up</Text>
       
-      {/* Debug: Show current step */}
-      {__DEV__ && (
-        <Text style={{ fontSize: 10, color: 'gray', textAlign: 'center', marginBottom: 10 }}>
-          Step: {step} | Loading: {loading ? 'Yes' : 'No'}
-        </Text>
-      )}
+      {/* Debug: Show current step and debug info */}
+      <Text style={{ fontSize: 12, color: 'red', textAlign: 'center', marginBottom: 10, padding: 10, backgroundColor: '#f0f0f0' }}>
+        Step: {step} | Loading: {loading ? 'Yes' : 'No'} | Requesting: {requestingOTP ? 'Yes' : 'No'}
+        {debugInfo ? '\n' + debugInfo : ''}
+      </Text>
       
       <Snackbar
         visible={snackbarVisible}
