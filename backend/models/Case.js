@@ -51,14 +51,7 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-    procedureId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: {
-        model: 'procedures',
-        key: 'id'
-      }
-    },
+    // procedureId removed - now using many-to-many relationship via CaseProcedure
     amount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
@@ -117,7 +110,11 @@ module.exports = (sequelize) => {
     Case.belongsTo(models.User, { foreignKey: 'referredToId', as: 'referredTo' });
     Case.belongsTo(models.Facility, { foreignKey: 'facilityId', as: 'facility' });
     Case.belongsTo(models.Payer, { foreignKey: 'payerId', as: 'payer' });
-    Case.belongsTo(models.Procedure, { foreignKey: 'procedureId', as: 'procedure' });
+    Case.belongsToMany(models.Procedure, {
+      through: models.CaseProcedure,
+      foreignKey: 'caseId',
+      as: 'procedures'
+    });
     Case.belongsToMany(models.TeamMember, {
       through: models.CaseTeamMember,
       foreignKey: 'caseId',

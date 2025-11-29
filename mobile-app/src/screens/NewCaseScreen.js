@@ -15,7 +15,7 @@ export default function NewCaseScreen({ navigation }) {
   const [facilityId, setFacilityId] = useState('');
   const [payerId, setPayerId] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [procedureId, setProcedureId] = useState('');
+  const [procedureIds, setProcedureIds] = useState([]);
   const [amount, setAmount] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('Pending');
   const [additionalNotes, setAdditionalNotes] = useState('');
@@ -106,7 +106,7 @@ export default function NewCaseScreen({ navigation }) {
         facilityId: facilityId || null,
         payerId: finalPayerId || null,
         invoiceNumber: invoiceNumber || null,
-        procedureId: procedureId || null,
+        procedureIds: procedureIds.length > 0 ? procedureIds : [],
         amount: amount ? parseFloat(amount) : null,
         paymentStatus,
         additionalNotes: additionalNotes || null,
@@ -233,21 +233,29 @@ export default function NewCaseScreen({ navigation }) {
         </View>
       )}
 
+      <Text style={styles.sectionTitle}>Procedures</Text>
+      {procedures.map((procedure) => (
+        <View key={procedure.id} style={styles.checkboxRow}>
+          <Checkbox
+            status={procedureIds.includes(procedure.id) ? 'checked' : 'unchecked'}
+            onPress={() => {
+              if (procedureIds.includes(procedure.id)) {
+                setProcedureIds(procedureIds.filter(id => id !== procedure.id));
+              } else {
+                setProcedureIds([...procedureIds, procedure.id]);
+              }
+            }}
+          />
+          <Text style={styles.checkboxLabel}>{procedure.name}</Text>
+        </View>
+      ))}
+
       <TextInput
         label="Invoice Number"
         value={invoiceNumber}
         onChangeText={setInvoiceNumber}
         mode="outlined"
         style={styles.input}
-      />
-
-      <Text style={styles.label}>Procedure</Text>
-      <RNPickerSelect
-        onValueChange={setProcedureId}
-        items={procedures.map(p => ({ label: p.name, value: p.id }))}
-        placeholder={{ label: 'Select procedure', value: '' }}
-        value={procedureId}
-        style={pickerSelectStyles}
       />
 
       <TextInput

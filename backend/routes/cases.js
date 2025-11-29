@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const { Case, Facility, Payer, Procedure, TeamMember, CaseTeamMember, User } = require('../models');
+const { Case, Facility, Payer, Procedure, TeamMember, CaseTeamMember, CaseProcedure, User } = require('../models');
 const { authenticateToken } = require('./auth');
 const { Op } = require('sequelize');
 const cron = require('node-cron');
@@ -16,6 +16,7 @@ router.post('/', [
   body('dateOfProcedure').isISO8601(),
   body('patientName').notEmpty(),
   body('teamMemberIds').optional().isArray(),
+  body('procedureIds').optional().isArray(),
   body('amount').optional().isNumeric()
 ], async (req, res) => {
   try {
@@ -27,13 +28,13 @@ router.post('/', [
     const {
       dateOfProcedure,
       teamMemberIds = [],
+      procedureIds = [],
       patientName,
       inpatientNumber,
       patientAge,
       facilityId,
       payerId,
       invoiceNumber,
-      procedureId,
       amount,
       paymentStatus,
       additionalNotes
@@ -55,12 +56,21 @@ router.post('/', [
       facilityId: facility?.id || null,
       payerId: payerId || null,
       invoiceNumber,
-      procedureId: procedureId || null,
       amount: amount ? parseFloat(amount) : null,
       paymentStatus: paymentStatus || 'Pending',
       additionalNotes,
       status: 'Upcoming'
     });
+
+    // Add procedures (multiple)
+    if (procedureIds && procedureIds.length > 0) {
+      for (const procedureId of procedureIds) {
+        await CaseProcedure.create({
+          caseId: newCase.id,
+          procedureId
+        });
+      }
+    }
 
     // Add team members
     if (teamMemberIds && teamMemberIds.length > 0) {
@@ -77,7 +87,11 @@ router.post('/', [
       include: [
         { model: Facility, as: 'facility' },
         { model: Payer, as: 'payer' },
-        { model: Procedure, as: 'procedure' },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        },
         { 
           model: TeamMember, 
           as: 'teamMembers',
@@ -114,7 +128,11 @@ router.get('/upcoming', async (req, res) => {
       include: [
         { model: Facility, as: 'facility' },
         { model: Payer, as: 'payer' },
-        { model: Procedure, as: 'procedure' },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        },
         { 
           model: TeamMember, 
           as: 'teamMembers',
@@ -148,7 +166,11 @@ router.get('/upcoming/all', async (req, res) => {
       include: [
         { model: Facility, as: 'facility' },
         { model: Payer, as: 'payer' },
-        { model: Procedure, as: 'procedure' },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        },
         { 
           model: TeamMember, 
           as: 'teamMembers',
@@ -198,6 +220,21 @@ router.put('/:id', async (req, res) => {
     // Handle date conversion
     if (updateData.dateOfProcedure) {
       updateData.dateOfProcedure = new Date(updateData.dateOfProcedure);
+    }
+
+    // Handle procedures (multiple)
+    if (updateData.procedureIds) {
+      // Remove existing procedures
+      await CaseProcedure.destroy({ where: { caseId } });
+      
+      // Add new procedures
+      for (const procedureId of updateData.procedureIds) {
+        await CaseProcedure.create({
+          caseId,
+          procedureId
+        });
+      }
+      delete updateData.procedureIds;
     }
 
     // Handle team members
