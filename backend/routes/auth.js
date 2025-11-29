@@ -374,8 +374,26 @@ router.put('/profile', authenticateToken, [
     };
 
     console.log('📝 Updating user with:', updateData);
-    await user.update(updateData);
-    console.log('✅ User updated successfully');
+    
+    try {
+      await user.update(updateData);
+      // Reload user to get updated data
+      await user.reload();
+      console.log('✅ User updated successfully:', {
+        id: user.id,
+        firstName: user.firstName,
+        prefix: user.prefix,
+        role: user.role
+      });
+    } catch (updateError) {
+      console.error('❌ Error during user.update():', updateError);
+      console.error('❌ Update error details:', {
+        message: updateError.message,
+        name: updateError.name,
+        errors: updateError.errors
+      });
+      throw updateError;
+    }
 
     res.json({
       success: true,
