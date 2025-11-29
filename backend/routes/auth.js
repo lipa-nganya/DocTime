@@ -116,7 +116,11 @@ router.post('/signup', [
   body('otp').isLength({ min: 4, max: 4 }).withMessage('OTP must be 4 digits'),
   body('pin').isLength({ min: 4, max: 6 }).withMessage('PIN must be between 4 and 6 digits'),
   body('role').isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']).withMessage('Invalid role'),
-  body('otherRole').optional().isString()
+  body('otherRole').optional({ nullable: true, checkFalsy: true }).custom((value) => {
+    // Accept null, undefined, or a string
+    if (value === null || value === undefined) return true;
+    return typeof value === 'string';
+  }).withMessage('otherRole must be a string or null')
 ], async (req, res) => {
   try {
     // Log incoming request data for debugging

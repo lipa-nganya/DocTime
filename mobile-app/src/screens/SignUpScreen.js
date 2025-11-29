@@ -149,8 +149,8 @@ export default function SignUpScreen({ navigation }) {
         phoneNumber: phoneNumber.trim(), // Send original format
         otp: otp.join(''),
         pin,
-        role: 'Surgeon',
-        otherRole: null
+        role: 'Surgeon'
+        // Don't send otherRole if it's null/undefined
       });
 
       if (response.data && response.data.token) {
