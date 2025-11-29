@@ -48,7 +48,12 @@ export default function SignUpScreen({ navigation }) {
     setLoading(true);
     try {
       const formattedPhone = formatPhoneNumber(phoneNumber);
+      console.log('📱 Requesting OTP for:', formattedPhone);
+      console.log('📱 API Base URL:', api.defaults.baseURL);
+      
       const response = await api.post('/auth/request-otp', { phoneNumber: formattedPhone });
+      
+      console.log('✅ OTP Response:', response.data);
 
       if (response.data && response.data.success) {
         setStep('otp');
@@ -60,11 +65,26 @@ export default function SignUpScreen({ navigation }) {
         Alert.alert('Error', response.data?.error || 'Failed to send OTP');
       }
     } catch (error) {
-      console.error('OTP send error:', error);
-      Alert.alert(
-        'Error',
-        error.response?.data?.error || 'Failed to send OTP. Please check your connection and try again.'
-      );
+      console.error('❌ OTP send error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        request: error.request ? 'Request made but no response' : 'No request made'
+      });
+      
+      let errorMsg = 'Failed to send OTP. ';
+      if (error.response) {
+        errorMsg += `Server error: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
+      } else if (error.request) {
+        errorMsg += `No response from server. API URL: ${api.defaults.baseURL}`;
+      } else {
+        errorMsg += error.message;
+      }
+      
+      Alert.alert('Error', errorMsg);
     } finally {
       setLoading(false);
     }
