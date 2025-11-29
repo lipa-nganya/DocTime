@@ -348,7 +348,8 @@ router.put('/profile', authenticateToken, [
       firstName: req.body.firstName,
       prefix: req.body.prefix,
       role: req.body.role,
-      otherRole: req.body.otherRole
+      otherRole: req.body.otherRole,
+      bodyKeys: Object.keys(req.body)
     });
     
     const errors = validationResult(req);

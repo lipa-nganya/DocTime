@@ -21,9 +21,9 @@ module.exports = (sequelize) => {
     },
     role: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Made nullable as it's set during onboarding
       validate: {
-        isIn: [['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']]
+        isIn: [['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other', null]]
       }
     },
     otherRole: {

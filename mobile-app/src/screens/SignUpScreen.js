@@ -171,8 +171,12 @@ export default function SignUpScreen({ navigation }) {
         // Don't set isOnboarded yet - user needs to complete onboarding
         await AsyncStorage.removeItem('isOnboarded');
         
-        // Use replace instead of reset to avoid navigation stack issues
-        navigation.replace('Onboarding');
+        // Use CommonActions.reset to properly reset navigation stack
+        // This ensures App.js recognizes the authenticated state
+        navigation.dispatch(CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Onboarding' }],
+        }));
       } else {
         throw new Error('Invalid response from server');
       }
