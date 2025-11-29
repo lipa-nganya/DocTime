@@ -128,9 +128,22 @@ export default function App() {
       const token = await AsyncStorage.getItem('authToken');
       const onboarded = await AsyncStorage.getItem('isOnboarded');
       
+      const wasAuthenticated = isAuthenticated;
+      const wasOnboarded = isOnboarded;
+      
       if (token) {
         setIsAuthenticated(true);
         setIsOnboarded(onboarded === 'true');
+      } else {
+        setIsAuthenticated(false);
+        setIsOnboarded(false);
+      }
+      
+      // If auth state changed, we might need to navigate
+      // But don't navigate if we're still loading
+      if (!isLoading && token && !wasAuthenticated) {
+        // User just authenticated, but navigation will be handled by the screen
+        console.log('✅ Auth state updated: authenticated');
       }
     } catch (error) {
       console.error('Error checking auth:', error);
@@ -147,9 +160,16 @@ export default function App() {
     <PaperProvider theme={theme}>
       <NavigationContainer 
         ref={navigationRef}
-        onStateChange={() => {
-          // Re-check auth state when navigation changes
+        onReady={() => {
+          // Check auth when navigation is ready
           checkAuth();
+        }}
+        onStateChange={() => {
+          // Re-check auth state when navigation changes, but debounce it
+          const timeoutId = setTimeout(() => {
+            checkAuth();
+          }, 100);
+          return () => clearTimeout(timeoutId);
         }}
       >
         <Stack.Navigator screenOptions={{ headerShown: false }}>

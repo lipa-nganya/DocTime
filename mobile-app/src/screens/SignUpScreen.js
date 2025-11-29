@@ -178,6 +178,9 @@ export default function SignUpScreen({ navigation }) {
         // Don't set isOnboarded yet - user needs to complete onboarding
         await AsyncStorage.removeItem('isOnboarded');
         
+        // Small delay to ensure AsyncStorage is written before navigation
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Use replace to prevent going back to signup screen
         navigation.replace('Onboarding');
       } else {

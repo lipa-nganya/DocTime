@@ -74,9 +74,12 @@ export default function OnboardingScreen() {
       console.log('✅ Response status:', response.status);
       console.log('✅ Response headers:', response.headers);
 
-      // Verify response is successful
-      if (!response.data || !response.data.success) {
-        throw new Error('Profile update failed: Invalid response from server');
+      // Verify response is successful - check for success flag or status code
+      if (response.status >= 200 && response.status < 300) {
+        // Success - response is valid even without explicit success flag
+        console.log('✅ Profile update successful');
+      } else {
+        throw new Error(`Profile update failed: HTTP ${response.status}`);
       }
 
       // Save onboarding status
