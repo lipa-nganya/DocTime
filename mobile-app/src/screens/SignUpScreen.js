@@ -204,20 +204,28 @@ export default function SignUpScreen() {
             style={styles.input}
             placeholder="0712345678"
           />
-          <Button
-            mode="contained"
+          <TouchableOpacity
             onPress={() => {
-              Alert.alert('Debug', 'Button onPress fired!', [{ text: 'OK' }]);
-              console.log('🔵 Send OTP button pressed');
-              handleRequestOTP();
+              Alert.alert('Debug', `TouchableOpacity pressed! Phone: ${phoneNumber || 'empty'}`, [{ text: 'OK', onPress: () => handleRequestOTP() }]);
             }}
-            loading={loading}
-            disabled={false}
-            style={styles.button}
-            contentStyle={{ paddingVertical: 8 }}
+            disabled={loading || requestingOTP}
+            style={styles.buttonWrapper}
           >
-            {loading ? 'Sending...' : 'Send OTP'}
-          </Button>
+            <Button
+              mode="contained"
+              onPress={() => {
+                Alert.alert('Debug', 'Button onPress fired!', [{ text: 'OK' }]);
+                console.log('🔵 Send OTP button pressed');
+                handleRequestOTP();
+              }}
+              loading={loading}
+              disabled={loading || requestingOTP}
+              style={styles.button}
+              contentStyle={{ paddingVertical: 8 }}
+            >
+              {loading ? 'Sending...' : 'Send OTP'}
+            </Button>
+          </TouchableOpacity>
           <Button
             mode="text"
             onPress={() => navigation.navigate('Login')}
