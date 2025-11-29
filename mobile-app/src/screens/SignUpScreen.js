@@ -143,9 +143,10 @@ export default function SignUpScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const formattedPhone = formatPhoneNumber(phoneNumber);
+      // Send original phone number format - backend will format it
+      // Backend validator expects formats like 0712345678 or +254712345678
       const response = await api.post('/auth/signup', {
-        phoneNumber: formattedPhone,
+        phoneNumber: phoneNumber.trim(), // Send original format
         otp: otp.join(''),
         pin,
         role: 'Surgeon',
