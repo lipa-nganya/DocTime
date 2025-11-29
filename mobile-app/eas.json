@@ -1,0 +1,52 @@
+{
+  "cli": {
+    "version": ">= 5.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assembleDebug"
+      }
+    },
+    "local-dev": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "local-dev",
+      "env": {
+        "EXPO_PUBLIC_ENV": "local",
+        "EXPO_PUBLIC_API_BASE_URL": "https://homiest-psychopharmacologic-anaya.ngrok-free.dev",
+        "EAS_BUILD_PROFILE": "local-dev"
+      }
+    },
+    "cloud-dev": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "cloud-dev",
+      "env": {
+        "EXPO_PUBLIC_ENV": "cloud",
+        "EXPO_PUBLIC_API_BASE_URL": "https://homiest-psychopharmacologic-anaya.ngrok-free.dev",
+        "EAS_BUILD_PROFILE": "cloud-dev"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
