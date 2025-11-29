@@ -132,8 +132,11 @@ export default function SignUpScreen() {
         otherRole: null
       });
 
+      console.log('✅ Signup successful:', response.data);
       await AsyncStorage.setItem('authToken', response.data.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+      console.log('✅ Token and user saved to AsyncStorage');
+      console.log('✅ Navigating to Onboarding...');
       setStep('onboarding');
       navigation.navigate('Onboarding');
     } catch (error) {
