@@ -194,6 +194,7 @@ export default function SignUpScreen({ navigation }) {
       <View style={styles.content}>
         <Text style={styles.title}>Doc Time</Text>
         <Text style={styles.subtitle}>Sign Up</Text>
+        <Text style={styles.debugText}>Backend: {api.defaults.baseURL}</Text>
 
         {step === 'phone' && (
           <>

@@ -71,6 +71,9 @@ export default function OnboardingScreen() {
         otherRole: role === 'Other' ? otherRole.trim() : null
       };
 
+      // Show backend URL in error message if it fails
+      const backendUrl = api.defaults.baseURL;
+      
       // Make the API call - backend returns { success: true, user: {...} }
       const response = await api.put('/auth/profile', requestData);
 
@@ -82,7 +85,7 @@ export default function OnboardingScreen() {
         // Navigate to MainTabs
         navigation.replace('MainTabs');
       } else {
-        throw new Error('Profile update failed: Invalid response from server');
+        throw new Error(`Profile update failed: Invalid response. Backend URL: ${backendUrl}`);
       }
     } catch (error) {
       console.error('❌ Onboarding error:', error);
@@ -93,11 +96,13 @@ export default function OnboardingScreen() {
       
       let errorMsg = 'Failed to save profile';
       if (error.response?.data?.error) {
-        errorMsg = error.response.data.error;
+        errorMsg = `${error.response.data.error}\n\nBackend URL: ${api.defaults.baseURL}`;
       } else if (error.response?.data?.errors && error.response.data.errors.length > 0) {
-        errorMsg = error.response.data.errors[0].msg || error.response.data.errors[0].message;
+        errorMsg = `${error.response.data.errors[0].msg || error.response.data.errors[0].message}\n\nBackend URL: ${api.defaults.baseURL}`;
       } else if (error.message) {
-        errorMsg = error.message;
+        errorMsg = `${error.message}\n\nBackend URL: ${api.defaults.baseURL}`;
+      } else {
+        errorMsg = `Failed to save profile\n\nBackend URL: ${api.defaults.baseURL}\n\nStatus: ${error.response?.status || 'No response'}`;
       }
       
       Alert.alert('Error', errorMsg);
