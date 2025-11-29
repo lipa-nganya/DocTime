@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, Case, Referral, Role, TeamMember, Settings, Facility } = require('../models');
+const { User, Case, Referral, Role, TeamMember, Settings, Facility, Payer } = require('../models');
 const { authenticateToken } = require('./auth');
 const { Op } = require('sequelize');
 
@@ -281,6 +281,75 @@ router.delete('/facilities/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting facility:', error);
     res.status(500).json({ error: 'Failed to delete facility' });
+  }
+});
+
+/**
+ * Get all payers (admin)
+ */
+router.get('/payers', async (req, res) => {
+  try {
+    const payers = await Payer.findAll({
+      order: [['name', 'ASC']]
+    });
+    res.json({ success: true, payers });
+  } catch (error) {
+    console.error('Error fetching payers:', error);
+    res.status(500).json({ error: 'Failed to fetch payers' });
+  }
+});
+
+/**
+ * Create a payer (admin)
+ */
+router.post('/payers', async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Payer name is required' });
+    }
+
+    // Check if payer already exists
+    let payer = await Payer.findOne({ where: { name: name.trim() } });
+    if (payer) {
+      return res.json({ success: true, payer, message: 'Payer already exists' });
+    }
+
+    payer = await Payer.create({ name: name.trim() });
+    res.status(201).json({ success: true, payer });
+  } catch (error) {
+    console.error('Error creating payer:', error);
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ error: 'Payer with this name already exists' });
+    }
+    res.status(500).json({ error: 'Failed to create payer' });
+  }
+});
+
+/**
+ * Delete a payer (admin)
+ */
+router.delete('/payers/:id', async (req, res) => {
+  try {
+    const payer = await Payer.findByPk(req.params.id);
+    if (!payer) {
+      return res.status(404).json({ error: 'Payer not found' });
+    }
+
+    // Check if payer is used in any cases
+    const caseCount = await Case.count({ where: { payerId: payer.id } });
+    if (caseCount > 0) {
+      return res.status(400).json({ 
+        error: `Cannot delete payer. It is used in ${caseCount} case(s).` 
+      });
+    }
+
+    await payer.destroy();
+    res.json({ success: true, message: 'Payer deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting payer:', error);
+    res.status(500).json({ error: 'Failed to delete payer' });
   }
 });
 

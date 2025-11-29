@@ -26,6 +26,8 @@ export default function NewCaseScreen({ navigation }) {
   const [procedures, setProcedures] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showOtherPayerInput, setShowOtherPayerInput] = useState(false);
+  const [otherPayerName, setOtherPayerName] = useState('');
 
   useEffect(() => {
     loadData();
@@ -55,6 +57,45 @@ export default function NewCaseScreen({ navigation }) {
       return;
     }
 
+    // If user entered a custom payer name, create it first
+    let finalPayerId = payerId;
+    if (showOtherPayerInput && otherPayerName.trim()) {
+      try {
+        const payerResponse = await api.post('/payers', {
+          name: otherPayerName.trim()
+        });
+        finalPayerId = payerResponse.data.payer.id;
+        // Refresh payers list and hide other input
+        setPayers([...payers, payerResponse.data.payer]);
+        setShowOtherPayerInput(false);
+        setOtherPayerName('');
+      } catch (error) {
+        // If payer already exists, try to find it
+        if (error.response?.status === 400 || error.response?.status === 409) {
+          // Reload payers to get the existing one
+          try {
+            const payersRes = await api.get('/payers');
+            const existingPayer = payersRes.data.payers.find(
+              p => p.name.toLowerCase() === otherPayerName.trim().toLowerCase()
+            );
+            if (existingPayer) {
+              finalPayerId = existingPayer.id;
+              setPayers(payersRes.data.payers);
+            } else {
+              Alert.alert('Error', 'Failed to create payer. Please try again.');
+              return;
+            }
+          } catch (reloadError) {
+            Alert.alert('Error', 'Failed to create payer. Please try again.');
+            return;
+          }
+        } else {
+          Alert.alert('Error', error.response?.data?.error || 'Failed to create payer');
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     try {
       await api.post('/cases', {
@@ -63,7 +104,7 @@ export default function NewCaseScreen({ navigation }) {
         inpatientNumber: inpatientNumber || null,
         patientAge: patientAge ? parseInt(patientAge) : null,
         facilityId: facilityId || null,
-        payerId: payerId || null,
+        payerId: finalPayerId || null,
         invoiceNumber: invoiceNumber || null,
         procedureId: procedureId || null,
         amount: amount ? parseFloat(amount) : null,
@@ -161,12 +202,36 @@ export default function NewCaseScreen({ navigation }) {
 
       <Text style={styles.label}>Payer</Text>
       <RNPickerSelect
-        onValueChange={setPayerId}
-        items={payers.map(p => ({ label: p.name, value: p.id }))}
+        onValueChange={(value) => {
+          if (value === 'other') {
+            setShowOtherPayerInput(true);
+            setPayerId('');
+          } else {
+            setShowOtherPayerInput(false);
+            setPayerId(value);
+            setOtherPayerName('');
+          }
+        }}
+        items={[
+          ...payers.map(p => ({ label: p.name, value: p.id })),
+          { label: 'Other', value: 'other' }
+        ]}
         placeholder={{ label: 'Select payer', value: '' }}
-        value={payerId}
+        value={payerId || (showOtherPayerInput ? 'other' : '')}
         style={pickerSelectStyles}
       />
+      {showOtherPayerInput && (
+        <View>
+          <TextInput
+            label="Enter Payer Name"
+            value={otherPayerName}
+            onChangeText={setOtherPayerName}
+            mode="outlined"
+            style={styles.input}
+            placeholder="e.g., New Insurance Company"
+          />
+        </View>
+      )}
 
       <TextInput
         label="Invoice Number"

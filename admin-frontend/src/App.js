@@ -437,6 +437,156 @@ function Facilities() {
   );
 }
 
+function Payers() {
+  const [payers, setPayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newPayerName, setNewPayerName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    loadPayers();
+  }, []);
+
+  const loadPayers = async () => {
+    try {
+      // Admin can access payers without auth token (admin routes bypass auth)
+      const response = await axios.get(`${API_BASE_URL}/admin/payers`);
+      setPayers(response.data.payers || []);
+    } catch (error) {
+      console.error('Error loading payers:', error);
+      // If auth error, try regular endpoint
+      try {
+        const regularResponse = await axios.get(`${API_BASE_URL}/payers`);
+        setPayers(regularResponse.data.payers || []);
+      } catch (regularError) {
+        console.error('Error loading payers from regular endpoint:', regularError);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPayer = async () => {
+    if (!newPayerName.trim()) {
+      alert('Please enter a payer name');
+      return;
+    }
+
+    setAdding(true);
+    try {
+      await axios.post(`${API_BASE_URL}/admin/payers`, {
+        name: newPayerName.trim()
+      });
+      setNewPayerName('');
+      loadPayers();
+      alert('Payer added successfully');
+    } catch (error) {
+      console.error('Error adding payer:', error);
+      if (error.response?.data?.error) {
+        alert(`Error: ${error.response.data.error}`);
+      } else {
+        alert('Failed to add payer');
+      }
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDeletePayer = async (payerId) => {
+    if (!confirm('Are you sure you want to delete this payer?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API_BASE_URL}/admin/payers/${payerId}`);
+      loadPayers();
+      alert('Payer deleted successfully');
+    } catch (error) {
+      console.error('Error deleting payer:', error);
+      if (error.response?.data?.error) {
+        alert(`Error: ${error.response.data.error}`);
+      } else {
+        alert('Failed to delete payer');
+      }
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div className="payers">
+      <h2>Payers</h2>
+      <div className="add-payer-form" style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #ddd', borderRadius: '8px' }}>
+        <h3>Add New Payer</h3>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="Enter payer name (e.g., Jubilee)"
+            value={newPayerName}
+            onChange={(e) => setNewPayerName(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddPayer();
+              }
+            }}
+            style={{ flex: 1, padding: '0.5rem', fontSize: '1rem' }}
+          />
+          <button 
+            onClick={handleAddPayer} 
+            disabled={adding || !newPayerName.trim()}
+            style={{ padding: '0.5rem 1.5rem', fontSize: '1rem', cursor: adding ? 'not-allowed' : 'pointer' }}
+          >
+            {adding ? 'Adding...' : 'Add Payer'}
+          </button>
+        </div>
+      </div>
+      <div className="payers-list">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Payer Name</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {payers.length === 0 ? (
+              <tr>
+                <td colSpan="3" style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                  No payers added yet. Add one above.
+                </td>
+              </tr>
+            ) : (
+              payers.map((payer) => (
+                <tr key={payer.id}>
+                  <td>{payer.name}</td>
+                  <td>{new Date(payer.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <button 
+                      onClick={() => handleDeletePayer(payer.id)}
+                      style={{ 
+                        padding: '0.25rem 0.75rem', 
+                        fontSize: '0.875rem',
+                        backgroundColor: '#ff6b6b',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function Settings() {
   const [settings, setSettings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -515,6 +665,7 @@ function App() {
           <Link to="/referrals">Referrals</Link>
           <Link to="/roles">Roles</Link>
           <Link to="/facilities">Facilities</Link>
+          <Link to="/payers">Payers</Link>
           <Link to="/settings">Settings</Link>
         </nav>
         <main className="content">
@@ -525,6 +676,7 @@ function App() {
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/roles" element={<Roles />} />
             <Route path="/facilities" element={<Facilities />} />
+            <Route path="/payers" element={<Payers />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
