@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, Image } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -86,7 +86,11 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Doc Time</Text>
+      <Image 
+        source={require('../../assets/logo.png')} 
+        style={styles.logo}
+        resizeMode="contain"
+      />
       <Text style={styles.subtitle}>Login</Text>
 
       <TextInput
@@ -139,7 +143,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.appBackground,
+  },
+  logo: {
+    width: 200,
+    height: 120,
+    alignSelf: 'center',
+    marginBottom: theme.spacing.lg,
   },
   title: {
     fontSize: 32,

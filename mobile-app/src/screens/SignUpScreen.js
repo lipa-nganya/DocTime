@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -197,7 +198,11 @@ export default function SignUpScreen({ navigation }) {
       style={styles.container}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>Doc Time</Text>
+        <Image 
+          source={require('../../assets/logo.png')} 
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.subtitle}>Sign Up</Text>
         <Text style={styles.debugText}>Backend: {api.defaults.baseURL}</Text>
 
@@ -352,12 +357,18 @@ export default function SignUpScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.appBackground,
   },
   content: {
     flex: 1,
     padding: 20,
     justifyContent: 'center',
+  },
+  logo: {
+    width: 200,
+    height: 120,
+    alignSelf: 'center',
+    marginBottom: 30,
   },
   title: {
     fontSize: 32,
