@@ -89,11 +89,7 @@ export default function SignUpScreen() {
       otpRefs.current[index + 1].focus();
     }
     
-    // Auto-verify if all 4 digits are entered
-    if (newOtp.every(digit => digit !== '') && newOtp.length === 4) {
-      const otpString = newOtp.join('');
-      handleVerifyOTP(otpString);
-    }
+    // Don't auto-verify - let user click Verify button
   };
 
   const handleOtpKeyPress = (index, key) => {
@@ -103,13 +99,15 @@ export default function SignUpScreen() {
     }
   };
 
-  const handleVerifyOTP = async (otpString = null) => {
-    const otpCode = otpString || otp.join('');
+  const handleVerifyOTP = async () => {
+    const otpCode = otp.join('');
     if (!otpCode || otpCode.length !== 4) {
       Alert.alert('Error', 'Please enter a valid 4-digit OTP');
       return;
     }
 
+    // Just move to PIN screen - OTP will be verified during signup
+    // This prevents OTP from being consumed before user completes signup
     setStep('pin');
   };
 
@@ -139,7 +137,15 @@ export default function SignUpScreen() {
       setStep('onboarding');
       navigation.navigate('Onboarding');
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to sign up');
+      console.error('❌ Signup Error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url
+      });
+      const errorMessage = error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || error.message || 'Failed to sign up';
+      Alert.alert('Sign Up Failed', errorMessage);
     } finally {
       setLoading(false);
     }
