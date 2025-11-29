@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { theme } from '../theme';
@@ -171,12 +172,9 @@ export default function SignUpScreen({ navigation }) {
         // Don't set isOnboarded yet - user needs to complete onboarding
         await AsyncStorage.removeItem('isOnboarded');
         
-        // Use CommonActions.reset to properly reset navigation stack
-        // This ensures App.js recognizes the authenticated state
-        navigation.dispatch(CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'Onboarding' }],
-        }));
+        // Use navigate instead of reset to avoid navigation stack issues
+        // App.js will handle the navigation state based on auth status
+        navigation.navigate('Onboarding');
       } else {
         throw new Error('Invalid response from server');
       }
