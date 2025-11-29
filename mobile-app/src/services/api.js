@@ -18,29 +18,31 @@ const getBaseURL = () => {
   
   console.log('🔍 [API] Environment Detection:', {
     buildProfile,
-    bundleId,
     isLocalDevBuild,
     envBase,
     configBase,
+    bundleId,
   });
   
-  // Priority 1: Environment variable
+  // Priority 1: Environment variable (from eas.json or OTA update)
   if (envBase) {
     console.log('🌐 [API] Using URL from EXPO_PUBLIC_API_BASE_URL:', `${envBase}/api`);
     return `${envBase}/api`;
   }
   
-  // Priority 2: Config extra
+  // Priority 2: Config extra (from app.config.js - set during build)
   if (configBase) {
-    console.log('🌐 [API] Using URL from app config:', `${configBase}/api`);
+    console.log('🌐 [API] Using URL from app config extra.apiBaseUrl:', `${configBase}/api`);
     return `${configBase}/api`;
   }
   
   // Priority 3: Local dev fallback
   if (buildProfile === 'local-dev' || isLocalDevBuild) {
-    const ngrokUrl = 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
-    console.log('🌐 [API] Local-dev mode - using ngrok:', `${ngrokUrl}/api`);
-    return `${ngrokUrl}/api`;
+    // Should not reach here if configBase is set correctly
+    console.error('❌ [API] Local-dev mode but no API URL configured!');
+    console.error('❌ [API] Check app.config.js and eas.json');
+    // Still provide fallback for testing
+    return 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev/api';
   }
   
   // Fallback for emulator
@@ -50,9 +52,8 @@ const getBaseURL = () => {
   }
   
   // Final fallback
-  const ngrokUrl = 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
-  console.warn('⚠️ [API] Using fallback ngrok URL:', `${ngrokUrl}/api`);
-  return `${ngrokUrl}/api`;
+  console.error('❌ [API] No API URL configured!');
+  return 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev/api';
 };
 
 const api = axios.create({
