@@ -71,22 +71,35 @@ export default function OnboardingScreen() {
       });
 
       console.log('✅ Profile updated:', response.data);
+      console.log('✅ Response status:', response.status);
+      console.log('✅ Response headers:', response.headers);
+
+      // Verify response is successful
+      if (!response.data || !response.data.success) {
+        throw new Error('Profile update failed: Invalid response from server');
+      }
 
       // Save onboarding status
       await AsyncStorage.setItem('isOnboarded', 'true');
       
-      // Navigate to MainTabs (Home screen) using CommonActions for proper navigation reset
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' }],
-        })
-      );
+      // Navigate to MainTabs (Home screen) using replace to prevent going back
+      navigation.replace('MainTabs');
     } catch (error) {
       console.error('❌ Onboarding error:', error);
       console.error('❌ Error response:', error.response?.data);
       console.error('❌ Error status:', error.response?.status);
-      const errorMsg = error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || 'Failed to save profile';
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Full error:', JSON.stringify(error, null, 2));
+      
+      let errorMsg = 'Failed to save profile';
+      if (error.response?.data?.error) {
+        errorMsg = error.response.data.error;
+      } else if (error.response?.data?.errors && error.response.data.errors.length > 0) {
+        errorMsg = error.response.data.errors[0].msg || error.response.data.errors[0].message;
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
       Alert.alert('Error', errorMsg);
     } finally {
       setLoading(false);
