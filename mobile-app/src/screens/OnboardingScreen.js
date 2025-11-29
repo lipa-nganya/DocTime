@@ -47,11 +47,20 @@ export default function OnboardingScreen() {
 
     setLoading(true);
     try {
+      // Check if token exists
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Error', 'Please sign up again. Session expired.');
+        navigation.replace('SignUp');
+        return;
+      }
+      
       console.log('📝 Updating profile:', {
         firstName: firstName.trim(),
         prefix,
         role,
-        otherRole: role === 'Other' ? otherRole.trim() : null
+        otherRole: role === 'Other' ? otherRole.trim() : null,
+        hasToken: !!token
       });
       
       const response = await api.put('/auth/profile', {

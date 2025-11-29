@@ -370,8 +370,25 @@ router.put('/profile', authenticateToken, [
       }
     });
   } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
+    console.error('❌ Error updating profile:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      userId: req.userId
+    });
+    
+    // Provide more specific error messages
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({ 
+        error: error.errors.map(e => e.message).join(', ') 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: error.message || 'Failed to update profile',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
