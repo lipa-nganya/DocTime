@@ -67,18 +67,25 @@ export default function App() {
 
   const checkForUpdates = async () => {
     try {
-      if (__DEV__) {
-        // Don't check for updates in development
+      // Always check for updates, even in dev mode (for standalone builds)
+      if (!Updates.isEnabled) {
+        console.log('📱 Updates not enabled');
         return;
       }
 
+      console.log('📱 Checking for updates...');
       const update = await Updates.checkForUpdateAsync();
+      
       if (update.isAvailable) {
+        console.log('📱 Update available, fetching...');
         await Updates.fetchUpdateAsync();
+        console.log('📱 Update fetched, reloading...');
         await Updates.reloadAsync();
+      } else {
+        console.log('📱 No updates available');
       }
     } catch (error) {
-      console.error('Error checking for updates:', error);
+      console.error('❌ Error checking for updates:', error);
     }
   };
 
