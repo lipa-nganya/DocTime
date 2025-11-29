@@ -19,9 +19,11 @@ export default function ProfileScreen() {
   const [role, setRole] = useState('');
   const [otherRole, setOtherRole] = useState('');
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProfile();
+    }, [])
+  );
 
   const loadProfile = async () => {
     try {

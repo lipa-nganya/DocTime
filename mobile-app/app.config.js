@@ -77,7 +77,7 @@ module.exports = ({ config }) => {
       android: {
         adaptiveIcon: {
           foregroundImage: './assets/adaptive-icon.png',
-          backgroundColor: '#292F36'
+          backgroundColor: '#393D7E'
         },
         package: packageName,
         permissions: [
