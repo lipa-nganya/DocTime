@@ -71,32 +71,18 @@ export default function OnboardingScreen() {
         otherRole: role === 'Other' ? otherRole.trim() : null
       };
 
-      console.log('📤 Sending profile update:', requestData);
-      console.log('📤 API URL:', api.defaults.baseURL);
-      console.log('📤 Token exists:', !!token);
-
+      // Make the API call - backend returns { success: true, user: {...} }
       const response = await api.put('/auth/profile', requestData);
 
-      console.log('✅ Profile updated:', response.data);
-      console.log('✅ Response status:', response.status);
-      console.log('✅ Response headers:', response.headers);
-
-      // Check if response indicates success (status 200-299 or success flag)
-      if (response.status >= 200 && response.status < 300) {
-        // Success - check if response has data
-        if (response.data) {
-          console.log('✅ Profile update successful, saving onboarding status');
-          
-          // Save onboarding status
-          await AsyncStorage.setItem('isOnboarded', 'true');
-          
-          // Navigate to MainTabs - simple replace like dial-a-drink
-          navigation.replace('MainTabs');
-        } else {
-          throw new Error('Profile update failed: Empty response from server');
-        }
+      // Backend returns success: true, so check for that
+      if (response.data && response.data.success) {
+        // Save onboarding status
+        await AsyncStorage.setItem('isOnboarded', 'true');
+        
+        // Navigate to MainTabs
+        navigation.replace('MainTabs');
       } else {
-        throw new Error(`Profile update failed: HTTP ${response.status}`);
+        throw new Error('Profile update failed: Invalid response from server');
       }
     } catch (error) {
       console.error('❌ Onboarding error:', error);

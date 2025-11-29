@@ -156,12 +156,15 @@ export default function SignUpScreen({ navigation }) {
       });
 
       if (response.data && response.data.token) {
+        // Save token FIRST
         await AsyncStorage.setItem('authToken', response.data.token);
         await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
-        // Don't set isOnboarded yet - user needs to complete onboarding
         await AsyncStorage.removeItem('isOnboarded');
         
-        // Navigate to onboarding - simple replace like dial-a-drink
+        // Wait a tiny bit to ensure AsyncStorage is written
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Navigate to onboarding
         navigation.replace('Onboarding');
       } else {
         throw new Error('Invalid response from server');
