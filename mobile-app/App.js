@@ -22,7 +22,7 @@ import { theme } from './src/theme';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:5001';
+const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
 
 function MainTabs() {
   return (

@@ -12,7 +12,7 @@ module.exports = ({ config }) => {
   // Note: localhost only works in emulator, not on physical devices
   const ngrokUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.NGROK_URL || 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
   const localApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || ngrokUrl;
-  const cloudApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://your-backend-url.run.app'; // Update with actual backend URL
+  const cloudApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev'; // Using ngrok URL for now (same as dial-a-drink)
   
   // Choose API URL based on environment
   // For local-dev, always use ngrok URL (localhost doesn't work on physical devices)
