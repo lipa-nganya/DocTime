@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { TextInput, Button, Text, RadioButton, SegmentedButtons } from 'react-native-paper';
+import { TextInput, Button, Text, SegmentedButtons } from 'react-native-paper';
+import RNPickerSelect from 'react-native-picker-select';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { theme } from '../theme';
 
-const ROLES = ['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other'];
+const ROLES = [
+  { label: 'Surgeon', value: 'Surgeon' },
+  { label: 'Assistant Surgeon', value: 'Assistant Surgeon' },
+  { label: 'Anaesthetist', value: 'Anaesthetist' },
+  { label: 'Assistant Anaesthetist', value: 'Assistant Anaesthetist' },
+  { label: 'Other', value: 'Other' }
+];
 const PREFIXES = ['Mr', 'Miss', 'Dr', 'Mrs'];
 
 export default function OnboardingScreen() {
@@ -66,12 +73,13 @@ export default function OnboardingScreen() {
       <Text style={styles.subtitle}>Let's set up your profile</Text>
 
       <TextInput
-        label="First Name"
+        label="Preferred Name (First Name)"
         value={firstName}
         onChangeText={setFirstName}
         mode="outlined"
         style={styles.input}
         autoCapitalize="words"
+        placeholder="Enter your first name"
       />
 
       <Text style={styles.sectionTitle}>Prefix</Text>
@@ -86,14 +94,24 @@ export default function OnboardingScreen() {
       />
 
       <Text style={styles.sectionTitle}>What role best describes you?</Text>
-      <RadioButton.Group onValueChange={setRole} value={role}>
-        {ROLES.map((r) => (
-          <View key={r} style={styles.radioRow}>
-            <RadioButton value={r} />
-            <Text style={styles.radioLabel}>{r}</Text>
-          </View>
-        ))}
-      </RadioButton.Group>
+      <View style={styles.pickerContainer}>
+        <RNPickerSelect
+          onValueChange={(value) => setRole(value)}
+          items={ROLES}
+          value={role}
+          placeholder={{
+            label: 'Select your role',
+            value: null,
+          }}
+          style={{
+            inputIOS: styles.pickerInput,
+            inputAndroid: styles.pickerInput,
+            placeholder: {
+              color: theme.colors.textSecondary,
+            },
+          }}
+        />
+      </View>
 
       {role === 'Other' && (
         <TextInput
@@ -151,14 +169,19 @@ const styles = StyleSheet.create({
   segmentedButtons: {
     marginBottom: theme.spacing.md,
   },
-  radioRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  pickerContainer: {
     marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.textSecondary,
+    borderRadius: 4,
+    backgroundColor: theme.colors.background,
   },
-  radioLabel: {
+  pickerInput: {
     fontSize: 16,
-    marginLeft: theme.spacing.sm,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.background,
   },
   button: {
     marginTop: theme.spacing.xl,

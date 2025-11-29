@@ -148,9 +148,8 @@ export default function SignUpScreen({ navigation }) {
       const response = await api.post('/auth/signup', {
         phoneNumber: phoneNumber.trim(), // Send original format
         otp: otp.join(''),
-        pin,
-        role: 'Surgeon'
-        // Don't send otherRole if it's null/undefined
+        pin
+        // Role will be set during onboarding
       });
 
       if (response.data && response.data.token) {

@@ -115,7 +115,8 @@ router.post('/signup', [
     }),
   body('otp').isLength({ min: 4, max: 4 }).withMessage('OTP must be 4 digits'),
   body('pin').isLength({ min: 4, max: 6 }).withMessage('PIN must be between 4 and 6 digits'),
-  body('role').isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']).withMessage('Invalid role'),
+  // Role is optional during signup - will be set during onboarding
+  body('role').optional().isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']).withMessage('Invalid role'),
   body('otherRole').optional({ nullable: true, checkFalsy: true }).custom((value) => {
     // Accept null, undefined, or a string
     if (value === null || value === undefined) return true;
@@ -198,10 +199,11 @@ router.post('/signup', [
     const pinHash = await bcrypt.hash(pin, 10);
 
     // Create user
+    // Role will be set during onboarding, use 'Surgeon' as default if not provided
     const user = await User.create({
       phoneNumber: formattedPhone,
       pinHash,
-      role,
+      role: role || 'Surgeon', // Default to Surgeon if not provided (will be updated in onboarding)
       otherRole: role === 'Other' ? otherRole : null,
       isVerified: true,
       signupOTP: otp // Store OTP for admin display
