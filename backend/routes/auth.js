@@ -318,10 +318,29 @@ router.post('/login', [
  * Update user profile
  */
 router.put('/profile', authenticateToken, [
-  body('firstName').notEmpty().withMessage('First name is required').isString().trim(),
-  body('prefix').notEmpty().withMessage('Prefix is required').isIn(['Mr', 'Miss', 'Dr', 'Mrs']),
-  body('role').notEmpty().withMessage('Role is required').isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']),
-  body('otherRole').optional({ nullable: true }).isString().trim()
+  body('firstName')
+    .notEmpty()
+    .withMessage('First name is required')
+    .isString()
+    .withMessage('First name must be a string')
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage('First name cannot be empty'),
+  body('prefix')
+    .notEmpty()
+    .withMessage('Prefix is required')
+    .isIn(['Mr', 'Miss', 'Dr', 'Mrs'])
+    .withMessage('Prefix must be one of: Mr, Miss, Dr, Mrs'),
+  body('role')
+    .notEmpty()
+    .withMessage('Role is required')
+    .isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other'])
+    .withMessage('Invalid role'),
+  body('otherRole')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage('Other role must be a string')
+    .trim()
 ], async (req, res) => {
   try {
     console.log('📝 Profile update request:', {
