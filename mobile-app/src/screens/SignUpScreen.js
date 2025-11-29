@@ -136,9 +136,13 @@ export default function SignUpScreen() {
       await AsyncStorage.setItem('authToken', response.data.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
       console.log('✅ Token and user saved to AsyncStorage');
-      console.log('✅ Navigating to Onboarding...');
-      setStep('onboarding');
-      navigation.navigate('Onboarding');
+      
+      // Reset navigation stack and navigate to Onboarding
+      // The App component will detect the token and show Onboarding screen
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Onboarding' }],
+      });
     } catch (error) {
       console.error('❌ Signup Error:', error);
       console.error('Error details:', {

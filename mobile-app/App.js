@@ -110,6 +110,7 @@ export default function App() {
             <>
               <Stack.Screen name="SignUp" component={SignUpScreen} />
               <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             </>
           ) : !isOnboarded ? (
             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
