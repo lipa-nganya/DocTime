@@ -25,29 +25,6 @@ export default function SignUpScreen({ navigation }) {
   const otpRefs = useRef([]);
   const phoneInputRef = useRef(null);
 
-  // Check if user is already authenticated when screen focuses or mounts
-  useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      const token = await AsyncStorage.getItem('authToken');
-      const onboarded = await AsyncStorage.getItem('isOnboarded');
-      
-      if (token && !onboarded) {
-        // User is authenticated but not onboarded, navigate to onboarding
-        navigation.replace('Onboarding');
-      } else if (token && onboarded === 'true') {
-        // User is authenticated and onboarded, navigate to home
-        navigation.replace('MainTabs');
-      }
-    };
-
-    // Check immediately on mount
-    checkAuthAndRedirect();
-
-    // Also check when screen focuses
-    const unsubscribe = navigation.addListener('focus', checkAuthAndRedirect);
-
-    return unsubscribe;
-  }, [navigation]);
 
   useEffect(() => {
     if (step === 'otp' && otpRefs.current[0]) {
@@ -184,10 +161,7 @@ export default function SignUpScreen({ navigation }) {
         // Don't set isOnboarded yet - user needs to complete onboarding
         await AsyncStorage.removeItem('isOnboarded');
         
-        // Small delay to ensure AsyncStorage is written before navigation
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Use replace to prevent going back to signup screen
+        // Navigate to onboarding - simple replace like dial-a-drink
         navigation.replace('Onboarding');
       } else {
         throw new Error('Invalid response from server');

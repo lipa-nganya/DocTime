@@ -56,29 +56,17 @@ function MainTabs() {
 }
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isOnboarded, setIsOnboarded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const navigationRef = React.useRef();
+  const [initialRoute, setInitialRoute] = useState('SignUp');
 
   useEffect(() => {
-    checkAuth();
+    checkAuthStatus();
     // Delay update check to avoid interrupting user input
-    // Check for updates after a delay to allow user to interact first
     const updateTimer = setTimeout(() => {
       checkForUpdates();
-    }, 3000); // Wait 3 seconds before checking for updates
+    }, 3000);
     
     return () => clearTimeout(updateTimer);
-  }, []);
-
-  // Listen for navigation state changes to update auth state
-  useEffect(() => {
-    const unsubscribe = navigationRef.current?.addListener('state', () => {
-      checkAuth();
-    });
-
-    return unsubscribe;
   }, []);
 
   const checkForUpdates = async () => {
@@ -123,30 +111,26 @@ export default function App() {
     }
   };
 
-  const checkAuth = async () => {
+  const checkAuthStatus = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const onboarded = await AsyncStorage.getItem('isOnboarded');
       
-      const wasAuthenticated = isAuthenticated;
-      const wasOnboarded = isOnboarded;
+      console.log('App startup check - token:', !!token, 'onboarded:', onboarded);
       
-      if (token) {
-        setIsAuthenticated(true);
-        setIsOnboarded(onboarded === 'true');
+      if (token && onboarded === 'true') {
+        console.log('✅ User is authenticated and onboarded, going to MainTabs');
+        setInitialRoute('MainTabs');
+      } else if (token && onboarded !== 'true') {
+        console.log('✅ User is authenticated but not onboarded, going to Onboarding');
+        setInitialRoute('Onboarding');
       } else {
-        setIsAuthenticated(false);
-        setIsOnboarded(false);
-      }
-      
-      // If auth state changed, we might need to navigate
-      // But don't navigate if we're still loading
-      if (!isLoading && token && !wasAuthenticated) {
-        // User just authenticated, but navigation will be handled by the screen
-        console.log('✅ Auth state updated: authenticated');
+        console.log('Starting at SignUp screen');
+        setInitialRoute('SignUp');
       }
     } catch (error) {
-      console.error('Error checking auth:', error);
+      console.error('Error checking auth status:', error);
+      setInitialRoute('SignUp');
     } finally {
       setIsLoading(false);
     }
@@ -158,22 +142,11 @@ export default function App() {
 
   return (
     <PaperProvider theme={theme}>
-      <NavigationContainer 
-        ref={navigationRef}
-        onReady={() => {
-          // Check auth when navigation is ready
-          checkAuth();
-        }}
-        onStateChange={() => {
-          // Re-check auth state when navigation changes, but debounce it
-          const timeoutId = setTimeout(() => {
-            checkAuth();
-          }, 100);
-          return () => clearTimeout(timeoutId);
-        }}
-      >
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {/* Always include all screens - let each screen handle its own auth check */}
+      <NavigationContainer>
+        <Stack.Navigator 
+          initialRouteName={initialRoute}
+          screenOptions={{ headerShown: false }}
+        >
           <Stack.Screen name="SignUp" component={SignUpScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />

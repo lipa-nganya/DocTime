@@ -24,20 +24,6 @@ export default function OnboardingScreen() {
   const [otherRole, setOtherRole] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Check auth on mount and focus
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = await AsyncStorage.getItem('authToken');
-      if (!token) {
-        // No token, redirect to signup
-        navigation.replace('SignUp');
-      }
-    };
-
-    checkAuth();
-    const unsubscribe = navigation.addListener('focus', checkAuth);
-    return unsubscribe;
-  }, [navigation]);
 
   const handleComplete = async () => {
     if (!firstName.trim()) {
@@ -104,16 +90,8 @@ export default function OnboardingScreen() {
           // Save onboarding status
           await AsyncStorage.setItem('isOnboarded', 'true');
           
-          // Small delay to ensure AsyncStorage is written
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Navigate to MainTabs (Home screen) using reset to clear stack
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: 'MainTabs' }],
-            })
-          );
+          // Navigate to MainTabs - simple replace like dial-a-drink
+          navigation.replace('MainTabs');
         } else {
           throw new Error('Profile update failed: Empty response from server');
         }
