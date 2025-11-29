@@ -18,45 +18,43 @@ export default function SignUpScreen() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const otpRefs = useRef([]);
 
-  const handleRequestOTP = () => {
-    Alert.alert('Test', 'Button clicked!', [{ text: 'OK', onPress: async () => {
-      if (!phoneNumber.trim()) {
-        Alert.alert('Error', 'Please enter your phone number');
-        return;
-      }
+  const handleRequestOTP = async () => {
+    if (!phoneNumber.trim()) {
+      Alert.alert('Error', 'Please enter your phone number');
+      return;
+    }
 
-      if (loading) return;
+    if (loading) return;
 
-      setLoading(true);
+    setLoading(true);
+    
+    try {
+      const response = await api.post('/auth/request-otp', { phoneNumber });
       
-      try {
-        const response = await api.post('/auth/request-otp', { phoneNumber });
+      if (response && response.data && response.data.success) {
+        setSnackbarMessage('OTP sent! Check your messages.');
+        setSnackbarVisible(true);
+        setStep('otp');
         
-        if (response && response.data && response.data.success) {
-          setSnackbarMessage('OTP sent! Check your messages.');
-          setSnackbarVisible(true);
-          setStep('otp');
-          
-          if (response.data.otp) {
-            const digits = response.data.otp.split('').slice(0, 4);
-            setOtp(digits);
-          }
-          
-          setTimeout(() => {
-            if (otpRefs.current[0]) {
-              otpRefs.current[0].focus();
-            }
-          }, 200);
-        } else {
-          throw new Error('Invalid response from server');
+        if (response.data.otp) {
+          const digits = response.data.otp.split('').slice(0, 4);
+          setOtp(digits);
         }
-      } catch (error) {
-        const msg = error.response?.data?.error || error.message || 'Failed to send OTP';
-        Alert.alert('Error', msg);
-      } finally {
-        setLoading(false);
+        
+        setTimeout(() => {
+          if (otpRefs.current[0]) {
+            otpRefs.current[0].focus();
+          }
+        }, 200);
+      } else {
+        throw new Error('Invalid response from server');
       }
-    }}]);
+    } catch (error) {
+      const msg = error.response?.data?.error || error.message || 'Failed to send OTP';
+      Alert.alert('Error', msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpChange = (index, value) => {
