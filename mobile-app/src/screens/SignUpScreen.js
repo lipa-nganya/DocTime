@@ -40,16 +40,24 @@ export default function SignUpScreen() {
       const response = await api.post('/auth/request-otp', { phoneNumber });
       
       console.log('✅ OTP Response:', response.data);
+      console.log('✅ Response status:', response.status);
+      
+      // Check if response is successful
+      if (!response.data || !response.data.success) {
+        throw new Error(response.data?.message || 'Invalid response from server');
+      }
       
       // Show snackbar notification
       setSnackbarMessage('OTP sent to your phone! Please check your messages.');
       setSnackbarVisible(true);
       
       // Automatically redirect to OTP screen
+      console.log('🔄 Changing step to otp');
       setStep('otp');
       
       // In dev mode, auto-fill OTP if provided
       if (response.data?.otp) {
+        console.log('📝 Auto-filling OTP:', response.data.otp);
         const otpDigits = response.data.otp.split('').slice(0, 4);
         setOtp(otpDigits);
         // Focus first input
@@ -59,6 +67,7 @@ export default function SignUpScreen() {
           }
         }, 100);
       } else {
+        console.log('📝 No OTP in response, user will enter manually');
         // Focus first OTP input
         setTimeout(() => {
           if (otpRefs.current[0]) {
