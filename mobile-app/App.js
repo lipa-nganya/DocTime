@@ -58,16 +58,22 @@ function MainTabs() {
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState('SignUp');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    checkAuthStatus();
-    // Delay update check to avoid interrupting user input
-    const updateTimer = setTimeout(() => {
-      checkForUpdates();
-    }, 3000);
-    
-    return () => clearTimeout(updateTimer);
-  }, []);
+    // Only run once on mount
+    if (!isInitialized) {
+      checkAuthStatus();
+      setIsInitialized(true);
+      
+      // Delay update check to avoid interrupting user input
+      const updateTimer = setTimeout(() => {
+        checkForUpdates();
+      }, 5000); // Increased delay
+      
+      return () => clearTimeout(updateTimer);
+    }
+  }, [isInitialized]);
 
   const checkForUpdates = async () => {
     try {

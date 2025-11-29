@@ -22,6 +22,7 @@ export default function SignUpScreen({ navigation }) {
   const [confirmPin, setConfirmPin] = useState('');
   const [step, setStep] = useState('phone'); // 'phone', 'otp', 'pin'
   const [loading, setLoading] = useState(false);
+  const [hasNavigated, setHasNavigated] = useState(false); // Prevent double navigation
   const otpRefs = useRef([]);
   const phoneInputRef = useRef(null);
 

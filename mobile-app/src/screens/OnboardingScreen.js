@@ -23,6 +23,7 @@ export default function OnboardingScreen() {
   const [role, setRole] = useState('');
   const [otherRole, setOtherRole] = useState('');
   const [loading, setLoading] = useState(false);
+  const [hasNavigated, setHasNavigated] = useState(false); // Prevent double navigation
 
 
   const handleComplete = async () => {
@@ -64,6 +65,12 @@ export default function OnboardingScreen() {
         hasToken: !!token
       });
       
+      // Prevent double submission
+      if (hasNavigated) {
+        console.log('⚠️ Already navigated, skipping');
+        return;
+      }
+
       const requestData = {
         firstName: firstName.trim(),
         prefix,
@@ -71,21 +78,25 @@ export default function OnboardingScreen() {
         otherRole: role === 'Other' ? otherRole.trim() : null
       };
 
-      // Show backend URL in error message if it fails
-      const backendUrl = api.defaults.baseURL;
-      
       // Make the API call - backend returns { success: true, user: {...} }
       const response = await api.put('/auth/profile', requestData);
 
-      // Backend returns success: true, so check for that
-      if (response.data && response.data.success) {
-        // Save onboarding status
-        await AsyncStorage.setItem('isOnboarded', 'true');
-        
-        // Navigate to MainTabs
-        navigation.replace('MainTabs');
+      // Check response - backend returns { success: true, user: {...} }
+      if (response && response.status >= 200 && response.status < 300 && response.data) {
+        // Check for success flag or assume success if status is 200-299
+        if (response.data.success !== false) {
+          // Save onboarding status
+          await AsyncStorage.setItem('isOnboarded', 'true');
+          
+          setHasNavigated(true);
+          
+          // Navigate to MainTabs
+          navigation.replace('MainTabs');
+        } else {
+          throw new Error(response.data.error || 'Profile update failed');
+        }
       } else {
-        throw new Error(`Profile update failed: Invalid response. Backend URL: ${backendUrl}`);
+        throw new Error(`Invalid response: Status ${response?.status || 'unknown'}`);
       }
     } catch (error) {
       console.error('❌ Onboarding error:', error);
@@ -94,15 +105,17 @@ export default function OnboardingScreen() {
       console.error('❌ Error message:', error.message);
       console.error('❌ Full error:', JSON.stringify(error, null, 2));
       
-      let errorMsg = 'Failed to save profile';
+      let errorMsg = `Failed to save profile\n\nBackend: ${api.defaults.baseURL}`;
       if (error.response?.data?.error) {
-        errorMsg = `${error.response.data.error}\n\nBackend URL: ${api.defaults.baseURL}`;
+        errorMsg = `${error.response.data.error}\n\nBackend: ${api.defaults.baseURL}\nStatus: ${error.response.status}`;
       } else if (error.response?.data?.errors && error.response.data.errors.length > 0) {
-        errorMsg = `${error.response.data.errors[0].msg || error.response.data.errors[0].message}\n\nBackend URL: ${api.defaults.baseURL}`;
+        errorMsg = `${error.response.data.errors[0].msg || error.response.data.errors[0].message}\n\nBackend: ${api.defaults.baseURL}\nStatus: ${error.response.status}`;
       } else if (error.message) {
-        errorMsg = `${error.message}\n\nBackend URL: ${api.defaults.baseURL}`;
-      } else {
-        errorMsg = `Failed to save profile\n\nBackend URL: ${api.defaults.baseURL}\n\nStatus: ${error.response?.status || 'No response'}`;
+        errorMsg = `${error.message}\n\nBackend: ${api.defaults.baseURL}`;
+      } else if (error.response) {
+        errorMsg = `HTTP ${error.response.status}\n\nBackend: ${api.defaults.baseURL}`;
+      } else if (error.request) {
+        errorMsg = `No response from server\n\nBackend: ${api.defaults.baseURL}\n\nCheck your internet connection`;
       }
       
       Alert.alert('Error', errorMsg);
