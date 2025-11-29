@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TextInput as RNTextInput } from 'react-native';
+import { View, StyleSheet, TextInput as RNTextInput, TouchableOpacity } from 'react-native';
 import { TextInput, Button, Text, Snackbar, Alert } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,12 +20,15 @@ export default function SignUpScreen() {
   const otpRefs = useRef([]);
 
   const handleRequestOTP = async () => {
+    // Immediate visible feedback
+    Alert.alert('Debug', `Button clicked! Phone: ${phoneNumber || 'empty'}`, [{ text: 'OK' }]);
+    
     console.log('🔵 handleRequestOTP called');
     console.log('🔵 phoneNumber:', phoneNumber);
     console.log('🔵 requestingOTP:', requestingOTP);
     console.log('🔵 loading:', loading);
     
-    if (!phoneNumber) {
+    if (!phoneNumber || phoneNumber.trim() === '') {
       Alert.alert('Error', 'Please enter your phone number');
       return;
     }
@@ -204,12 +207,14 @@ export default function SignUpScreen() {
           <Button
             mode="contained"
             onPress={() => {
+              Alert.alert('Debug', 'Button onPress fired!', [{ text: 'OK' }]);
               console.log('🔵 Send OTP button pressed');
               handleRequestOTP();
             }}
             loading={loading}
-            disabled={loading || requestingOTP}
+            disabled={false}
             style={styles.button}
+            contentStyle={{ paddingVertical: 8 }}
           >
             {loading ? 'Sending...' : 'Send OTP'}
           </Button>
@@ -330,8 +335,10 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: theme.spacing.md,
   },
-  button: {
+  buttonWrapper: {
     marginTop: theme.spacing.md,
+  },
+  button: {
     backgroundColor: theme.colors.primary,
   },
   linkButton: {
