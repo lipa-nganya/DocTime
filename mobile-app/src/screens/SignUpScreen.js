@@ -203,11 +203,15 @@ export default function SignUpScreen() {
           />
           <Button
             mode="contained"
-            onPress={handleRequestOTP}
+            onPress={() => {
+              console.log('🔵 Send OTP button pressed');
+              handleRequestOTP();
+            }}
             loading={loading}
+            disabled={loading || requestingOTP}
             style={styles.button}
           >
-            Send OTP
+            {loading ? 'Sending...' : 'Send OTP'}
           </Button>
           <Button
             mode="text"
