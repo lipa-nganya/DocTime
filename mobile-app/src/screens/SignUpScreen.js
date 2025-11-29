@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TextInput as RNTextInput, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TextInput as RNTextInput } from 'react-native';
 import { TextInput, Button, Text, Snackbar, Alert } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,101 +12,82 @@ export default function SignUpScreen() {
   const [otp, setOtp] = useState(['', '', '', '']);
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState('phone'); // 'phone', 'otp', 'pin'
+  const [step, setStep] = useState('phone');
   const [loading, setLoading] = useState(false);
-  const [requestingOTP, setRequestingOTP] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [debugInfo, setDebugInfo] = useState('');
   const otpRefs = useRef([]);
 
   const handleRequestOTP = async () => {
-    if (!phoneNumber || phoneNumber.trim() === '') {
+    if (!phoneNumber.trim()) {
       Alert.alert('Error', 'Please enter your phone number');
       return;
     }
 
-    if (requestingOTP || loading) {
-      return;
-    }
+    if (loading) return;
 
-    setRequestingOTP(true);
     setLoading(true);
     
     try {
       const response = await api.post('/auth/request-otp', { phoneNumber });
       
-      if (response.data?.success) {
-        setSnackbarMessage('OTP sent to your phone! Please check your messages.');
+      if (response && response.data && response.data.success) {
+        setSnackbarMessage('OTP sent! Check your messages.');
         setSnackbarVisible(true);
-        setStep('otp');
         
-        if (response.data?.otp) {
-          const otpDigits = response.data.otp.split('').slice(0, 4);
-          setOtp(otpDigits);
+        // Change step AFTER a short delay to ensure snackbar shows
+        setTimeout(() => {
+          setStep('otp');
+          if (response.data.otp) {
+            const digits = response.data.otp.split('').slice(0, 4);
+            setOtp(digits);
+          }
           setTimeout(() => {
             if (otpRefs.current[0]) {
               otpRefs.current[0].focus();
             }
-          }, 100);
-        } else {
-          setTimeout(() => {
-            if (otpRefs.current[0]) {
-              otpRefs.current[0].focus();
-            }
-          }, 100);
-        }
+          }, 200);
+        }, 500);
       } else {
-        throw new Error(response.data?.message || 'Invalid response');
+        throw new Error('Invalid response from server');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to send OTP';
-      Alert.alert('Error', errorMessage);
+      const msg = error.response?.data?.error || error.message || 'Failed to send OTP';
+      Alert.alert('Error', msg);
     } finally {
       setLoading(false);
-      setRequestingOTP(false);
     }
   };
 
   const handleOtpChange = (index, value) => {
-    // Only allow numbers
-    if (value && !/^\d$/.test(value)) {
-      return;
-    }
+    if (value && !/^\d$/.test(value)) return;
     
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
     
-    // Auto-focus next input
     if (value && index < 3 && otpRefs.current[index + 1]) {
       otpRefs.current[index + 1].focus();
     }
-    
-    // Don't auto-verify - let user click Verify button
   };
 
   const handleOtpKeyPress = (index, key) => {
-    // Handle backspace
     if (key === 'Backspace' && !otp[index] && index > 0 && otpRefs.current[index - 1]) {
       otpRefs.current[index - 1].focus();
     }
   };
 
-  const handleVerifyOTP = async () => {
+  const handleVerifyOTP = () => {
     const otpCode = otp.join('');
-    if (!otpCode || otpCode.length !== 4) {
-      Alert.alert('Error', 'Please enter a valid 4-digit OTP');
+    if (otpCode.length !== 4) {
+      Alert.alert('Error', 'Please enter 4-digit OTP');
       return;
     }
-
-    // Just move to PIN screen - OTP will be verified during signup
-    // This prevents OTP from being consumed before user completes signup
     setStep('pin');
   };
 
   const handleSignUp = async () => {
-    if (!pin || pin.length < 4) {
+    if (pin.length < 4) {
       Alert.alert('Error', 'PIN must be at least 4 digits');
       return;
     }
@@ -122,31 +103,20 @@ export default function SignUpScreen() {
         phoneNumber,
         otp: otp.join(''),
         pin,
-        role: 'Surgeon', // Will be set in onboarding
+        role: 'Surgeon',
         otherRole: null
       });
 
-      console.log('✅ Signup successful:', response.data);
       await AsyncStorage.setItem('authToken', response.data.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
-      console.log('✅ Token and user saved to AsyncStorage');
       
-      // Reset navigation stack and navigate to Onboarding
-      // The App component will detect the token and show Onboarding screen
       navigation.reset({
         index: 0,
         routes: [{ name: 'Onboarding' }],
       });
     } catch (error) {
-      console.error('❌ Signup Error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url
-      });
-      const errorMessage = error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || error.message || 'Failed to sign up';
-      Alert.alert('Sign Up Failed', errorMessage);
+      const msg = error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || error.message || 'Failed to sign up';
+      Alert.alert('Sign Up Failed', msg);
     } finally {
       setLoading(false);
     }
@@ -157,20 +127,10 @@ export default function SignUpScreen() {
       <Text style={styles.title}>Doc Time</Text>
       <Text style={styles.subtitle}>Sign Up</Text>
       
-      {/* Debug: Show current step and debug info */}
-      <Text style={{ fontSize: 12, color: 'red', textAlign: 'center', marginBottom: 10, padding: 10, backgroundColor: '#f0f0f0' }}>
-        Step: {step} | Loading: {loading ? 'Yes' : 'No'} | Requesting: {requestingOTP ? 'Yes' : 'No'}
-        {debugInfo ? '\n' + debugInfo : ''}
-      </Text>
-      
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         duration={4000}
-        action={{
-          label: 'OK',
-          onPress: () => setSnackbarVisible(false),
-        }}
       >
         {snackbarMessage}
       </Snackbar>
@@ -190,10 +150,10 @@ export default function SignUpScreen() {
             mode="contained"
             onPress={handleRequestOTP}
             loading={loading}
-            disabled={loading || requestingOTP}
+            disabled={loading}
             style={styles.button}
           >
-            {loading ? 'Sending...' : 'Send OTP'}
+            Send OTP
           </Button>
           <Button
             mode="text"
@@ -215,9 +175,7 @@ export default function SignUpScreen() {
                 ref={(ref) => (otpRefs.current[index] = ref)}
                 style={[
                   styles.otpInput,
-                  {
-                    borderColor: otp[index] ? theme.colors.primary : theme.colors.textSecondary,
-                  }
+                  { borderColor: otp[index] ? theme.colors.primary : theme.colors.textSecondary }
                 ]}
                 value={otp[index]}
                 onChangeText={(value) => handleOtpChange(index, value)}
@@ -232,7 +190,7 @@ export default function SignUpScreen() {
           </View>
           <Button
             mode="contained"
-            onPress={() => handleVerifyOTP()}
+            onPress={handleVerifyOTP}
             style={styles.button}
           >
             Verify OTP
@@ -312,10 +270,8 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: theme.spacing.md,
   },
-  buttonWrapper: {
-    marginTop: theme.spacing.md,
-  },
   button: {
+    marginTop: theme.spacing.md,
     backgroundColor: theme.colors.primary,
   },
   linkButton: {
