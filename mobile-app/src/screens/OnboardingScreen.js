@@ -63,11 +63,16 @@ export default function OnboardingScreen() {
 
       console.log('✅ Profile updated:', response.data);
 
+      // Save onboarding status
       await AsyncStorage.setItem('isOnboarded', 'true');
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs' }],
-      });
+      
+      // Navigate to MainTabs (Home screen) using CommonActions for proper navigation reset
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        })
+      );
     } catch (error) {
       console.error('❌ Onboarding error:', error);
       console.error('❌ Error response:', error.response?.data);

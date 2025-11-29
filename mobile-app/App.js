@@ -63,7 +63,16 @@ export default function App() {
   useEffect(() => {
     checkAuth();
     checkForUpdates();
+    
+    // Listen for navigation state changes to update auth state
+    const unsubscribe = navigationRef.current?.addListener('state', () => {
+      checkAuth();
+    });
+    
+    return unsubscribe;
   }, []);
+  
+  const navigationRef = React.useRef();
 
   const checkForUpdates = async () => {
     try {
@@ -111,7 +120,7 @@ export default function App() {
 
   return (
     <PaperProvider theme={theme}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!isAuthenticated ? (
             <>
