@@ -20,34 +20,21 @@ export default function SignUpScreen() {
   const otpRefs = useRef([]);
 
   const handleRequestOTP = async () => {
-    // Immediate visible feedback
-    Alert.alert('Debug', `Button clicked! Phone: ${phoneNumber || 'empty'}`, [{ text: 'OK' }]);
-    
-    console.log('🔵 handleRequestOTP called');
-    console.log('🔵 phoneNumber:', phoneNumber);
-    console.log('🔵 requestingOTP:', requestingOTP);
-    console.log('🔵 loading:', loading);
-    
-    if (!phoneNumber || phoneNumber.trim() === '') {
-      Alert.alert('Error', 'Please enter your phone number');
-      return;
-    }
-
-    // Prevent double-clicking
-    if (requestingOTP || loading) {
-      console.log('⚠️ Request already in progress, ignoring click');
-      return;
-    }
-
-    console.log('📱 Starting OTP request...');
-    setRequestingOTP(true);
-    setLoading(true);
-    
     try {
-      console.log('📱 Requesting OTP for:', phoneNumber);
-      console.log('📱 API Base URL:', api.defaults.baseURL);
+      if (!phoneNumber || phoneNumber.trim() === '') {
+        Alert.alert('Error', 'Please enter your phone number');
+        return;
+      }
+
+      // Prevent double-clicking
+      if (requestingOTP || loading) {
+        return;
+      }
+
+      setRequestingOTP(true);
+      setLoading(true);
+      
       const response = await api.post('/auth/request-otp', { phoneNumber });
-      console.log('✅ OTP Response:', response.data);
       
       // Show snackbar notification
       setSnackbarMessage('OTP sent to your phone! Please check your messages.');
@@ -57,8 +44,8 @@ export default function SignUpScreen() {
       setStep('otp');
       
       // In dev mode, auto-fill OTP if provided
-      if (response.data.otp) {
-        const otpDigits = response.data.otp.split('');
+      if (response.data?.otp) {
+        const otpDigits = response.data.otp.split('').slice(0, 4);
         setOtp(otpDigits);
         // Focus first input
         setTimeout(() => {
@@ -75,18 +62,9 @@ export default function SignUpScreen() {
         }, 100);
       }
     } catch (error) {
-      console.error('❌ OTP Error:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url,
-        baseURL: error.config?.baseURL
-      });
       const errorMessage = error.response?.data?.error || error.message || 'Failed to send OTP. Please check your internet connection.';
       Alert.alert('Error', errorMessage);
     } finally {
-      console.log('🔵 Resetting loading states');
       setLoading(false);
       setRequestingOTP(false);
     }
@@ -204,28 +182,15 @@ export default function SignUpScreen() {
             style={styles.input}
             placeholder="0712345678"
           />
-          <TouchableOpacity
-            onPress={() => {
-              Alert.alert('Debug', `TouchableOpacity pressed! Phone: ${phoneNumber || 'empty'}`, [{ text: 'OK', onPress: () => handleRequestOTP() }]);
-            }}
+          <Button
+            mode="contained"
+            onPress={handleRequestOTP}
+            loading={loading}
             disabled={loading || requestingOTP}
-            style={styles.buttonWrapper}
+            style={styles.button}
           >
-            <Button
-              mode="contained"
-              onPress={() => {
-                Alert.alert('Debug', 'Button onPress fired!', [{ text: 'OK' }]);
-                console.log('🔵 Send OTP button pressed');
-                handleRequestOTP();
-              }}
-              loading={loading}
-              disabled={loading || requestingOTP}
-              style={styles.button}
-              contentStyle={{ paddingVertical: 8 }}
-            >
-              {loading ? 'Sending...' : 'Send OTP'}
-            </Button>
-          </TouchableOpacity>
+            {loading ? 'Sending...' : 'Send OTP'}
+          </Button>
           <Button
             mode="text"
             onPress={() => navigation.navigate('Login')}
