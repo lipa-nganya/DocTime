@@ -265,6 +265,53 @@ router.post('/login', [
 });
 
 /**
+ * Update user profile
+ */
+router.put('/profile', authenticateToken, [
+  body('firstName').optional().isString().trim(),
+  body('prefix').optional().isIn(['Mr', 'Miss', 'Dr', 'Mrs']),
+  body('role').optional().isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']),
+  body('otherRole').optional().isString().trim()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const user = await User.findByPk(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updateData = {};
+    if (req.body.firstName !== undefined) updateData.firstName = req.body.firstName;
+    if (req.body.prefix !== undefined) updateData.prefix = req.body.prefix;
+    if (req.body.role !== undefined) updateData.role = req.body.role;
+    if (req.body.otherRole !== undefined) {
+      updateData.otherRole = req.body.role === 'Other' ? req.body.otherRole : null;
+    }
+
+    await user.update(updateData);
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        phoneNumber: user.phoneNumber,
+        firstName: user.firstName,
+        prefix: user.prefix,
+        role: user.role,
+        otherRole: user.otherRole
+      }
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+/**
  * Verify token (for biometric login)
  */
 router.post('/verify-token', async (req, res) => {
