@@ -130,12 +130,27 @@ router.post('/signup', [
     
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.error('❌ Validation errors:', JSON.stringify(errors.array(), null, 2));
-      const firstError = errors.array()[0];
+      const errorArray = errors.array();
+      console.error('❌ Validation errors:', JSON.stringify(errorArray, null, 2));
+      console.error('❌ Full error details:', {
+        count: errorArray.length,
+        errors: errorArray.map(e => ({
+          param: e.param,
+          msg: e.msg,
+          location: e.location,
+          value: e.value
+        }))
+      });
+      
+      // Get the first error with proper field name
+      const firstError = errorArray[0];
+      const fieldName = firstError?.param || firstError?.path || 'unknown';
+      const errorMessage = firstError?.msg || 'Invalid value';
+      
       return res.status(400).json({ 
-        error: firstError?.msg || 'Invalid value',
-        field: firstError?.param || 'unknown',
-        errors: errors.array() 
+        error: errorMessage,
+        field: fieldName,
+        errors: errorArray 
       });
     }
 
