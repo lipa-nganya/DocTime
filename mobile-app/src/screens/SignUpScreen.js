@@ -19,14 +19,14 @@ export default function SignUpScreen() {
   const otpRefs = useRef([]);
 
   const handleRequestOTP = async () => {
+    // Immediate feedback - change button text
+    setLoading(true);
+    
     if (!phoneNumber.trim()) {
       Alert.alert('Error', 'Please enter your phone number');
+      setLoading(false);
       return;
     }
-
-    if (loading) return;
-
-    setLoading(true);
     
     try {
       const response = await api.post('/auth/request-otp', { phoneNumber });
@@ -47,7 +47,7 @@ export default function SignUpScreen() {
           }
         }, 200);
       } else {
-        throw new Error('Invalid response from server');
+        Alert.alert('Error', 'Invalid response from server');
       }
     } catch (error) {
       const msg = error.response?.data?.error || error.message || 'Failed to send OTP';
@@ -146,12 +146,15 @@ export default function SignUpScreen() {
           />
           <Button
             mode="contained"
-            onPress={handleRequestOTP}
+            onPress={() => {
+              console.log('Button pressed, phone:', phoneNumber);
+              handleRequestOTP();
+            }}
             loading={loading}
             disabled={loading}
             style={styles.button}
           >
-            Send OTP
+            {loading ? 'Sending...' : 'Send OTP'}
           </Button>
           <Button
             mode="text"
