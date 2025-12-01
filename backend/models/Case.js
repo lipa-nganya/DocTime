@@ -51,7 +51,14 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-    // procedureId removed - now using many-to-many relationship via CaseProcedure
+    procedureId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'procedures',
+        key: 'id'
+      }
+    },
     amount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true
@@ -61,7 +68,7 @@ module.exports = (sequelize) => {
       allowNull: true,
       defaultValue: 'Pending',
       validate: {
-        isIn: [['Pending', 'Paid', 'Partially Paid', 'Cancelled']]
+        isIn: [['Pending', 'Paid', 'Partially Paid', 'Pro Bono', 'Cancelled']]
       }
     },
     additionalNotes: {
@@ -110,11 +117,7 @@ module.exports = (sequelize) => {
     Case.belongsTo(models.User, { foreignKey: 'referredToId', as: 'referredTo' });
     Case.belongsTo(models.Facility, { foreignKey: 'facilityId', as: 'facility' });
     Case.belongsTo(models.Payer, { foreignKey: 'payerId', as: 'payer' });
-    Case.belongsToMany(models.Procedure, {
-      through: models.CaseProcedure,
-      foreignKey: 'caseId',
-      as: 'procedures'
-    });
+    Case.belongsTo(models.Procedure, { foreignKey: 'procedureId', as: 'procedure' });
     Case.belongsToMany(models.TeamMember, {
       through: models.CaseTeamMember,
       foreignKey: 'caseId',

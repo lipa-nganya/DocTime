@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { TextInput, Button, Text, Checkbox, IconButton } from 'react-native-paper';
+import { TextInput, Button, Text, Checkbox, IconButton, Snackbar } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNPickerSelect from 'react-native-picker-select';
+import { useNavigation } from '@react-navigation/native';
 import api from '../services/api';
 import { theme } from '../theme';
 
@@ -34,6 +35,10 @@ export default function NewCaseScreen({ navigation }) {
   // Procedure dropdown state
   const [procedureExpanded, setProcedureExpanded] = useState(false);
   const [procedureSearchQuery, setProcedureSearchQuery] = useState('');
+  
+  // Snackbar state
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     loadData();
@@ -65,7 +70,7 @@ export default function NewCaseScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await api.post('/cases', {
+      const response = await api.post('/cases', {
         dateOfProcedure: dateOfProcedure.toISOString(),
         patientName,
         inpatientNumber: inpatientNumber || null,
@@ -80,12 +85,26 @@ export default function NewCaseScreen({ navigation }) {
         teamMemberIds: selectedTeamMembers
       });
 
-      Alert.alert('Success', 'Case created successfully', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
+      setLoading(false);
+      
+      // Check if case was auto-completed due to past date
+      if (response.data.isAutoCompleted) {
+        setSnackbarMessage('Case has been added and marked as completed (date has passed)');
+        setSnackbarVisible(true);
+        // Navigate back after a short delay to show the toast
+        setTimeout(() => {
+          navigation.goBack();
+        }, 2000);
+      } else {
+        // Case is upcoming, show success and navigate back
+        setSnackbarMessage('Case created successfully');
+        setSnackbarVisible(true);
+        setTimeout(() => {
+          navigation.goBack();
+        }, 1500);
+      }
     } catch (error) {
       Alert.alert('Error', error.response?.data?.error || 'Failed to create case');
-    } finally {
       setLoading(false);
     }
   };
@@ -360,6 +379,15 @@ export default function NewCaseScreen({ navigation }) {
         Create Case
       </Button>
       <View style={styles.bottomSpacer} />
+      
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={styles.snackbar}
+      >
+        {snackbarMessage}
+      </Snackbar>
     </ScrollView>
   );
 }
@@ -404,6 +432,9 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 100,
+  },
+  snackbar: {
+    marginBottom: 50,
   },
   dropdownContainer: {
     marginBottom: theme.spacing.md,

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
 import { Card, Button, Text, FAB, List } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 import api from '../services/api';
 import { theme } from '../theme';
 
@@ -14,6 +15,13 @@ export default function HomeScreen() {
   useEffect(() => {
     loadCases();
   }, []);
+
+  // Refresh cases when screen comes into focus (e.g., after creating a new case)
+  useFocusEffect(
+    useCallback(() => {
+      loadCases();
+    }, [])
+  );
 
   const loadCases = async () => {
     try {
@@ -58,9 +66,11 @@ export default function HomeScreen() {
         {loading ? (
           <Text>Loading...</Text>
         ) : cases.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No upcoming cases</Text>
-          </View>
+          <Card style={styles.emptyCard}>
+            <Card.Content>
+              <Text style={styles.emptyText}>No upcoming cases</Text>
+            </Card.Content>
+          </Card>
         ) : (
           cases.map((caseItem) => (
             <Card
@@ -112,16 +122,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     elevation: 2,
   },
-  emptyContainer: {
+  emptyCard: {
     marginTop: theme.spacing.xl,
-    padding: theme.spacing.xl,
-    alignItems: 'center',
   },
   emptyText: {
     textAlign: 'center',
     color: theme.colors.textSecondary,
-    fontSize: 16,
-    fontWeight: '500',
   },
   patientName: {
     fontSize: 18,
