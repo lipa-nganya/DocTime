@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
 import { Card, Button, Text, FAB, List } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -11,6 +11,7 @@ export default function HomeScreen() {
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const isFirstMount = useRef(true);
 
   useEffect(() => {
     loadCases();
@@ -19,17 +20,31 @@ export default function HomeScreen() {
   // Refresh cases when screen comes into focus (e.g., after creating a new case)
   useFocusEffect(
     useCallback(() => {
-      loadCases();
-    }, [])
+      // Skip refresh on initial mount (handled by useEffect)
+      if (isFirstMount.current) {
+        isFirstMount.current = false;
+        return;
+      }
+      // Refresh when screen comes into focus
+      if (!loading && !refreshing) {
+        loadCases();
+      }
+    }, [loading, refreshing])
   );
 
   const loadCases = async () => {
     try {
       const response = await api.get('/cases/upcoming');
-      setCases(response.data.cases || []);
+      console.log('Cases response:', response.data);
+      // Handle both response formats: { cases: [...] } or { success: true, cases: [...] }
+      const casesData = response.data.cases || response.data.data?.cases || [];
+      setCases(casesData);
     } catch (error) {
       console.error('Error loading cases:', error);
-      Alert.alert('Error', 'Failed to load cases');
+      console.error('Error response:', error.response?.data);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to load cases';
+      Alert.alert('Error', errorMessage);
+      setCases([]); // Set empty array on error
     } finally {
       setLoading(false);
       setRefreshing(false);
