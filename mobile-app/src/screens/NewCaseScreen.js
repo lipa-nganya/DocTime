@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { TextInput, Button, Text, Checkbox, Menu } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { TextInput, Button, Text, Checkbox, IconButton } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import RNPickerSelect from 'react-native-picker-select';
 import api from '../services/api';
@@ -15,7 +15,7 @@ export default function NewCaseScreen({ navigation }) {
   const [facilityId, setFacilityId] = useState('');
   const [payerId, setPayerId] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [procedureIds, setProcedureIds] = useState([]);
+  const [procedureId, setProcedureId] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('Pending');
   const [additionalNotes, setAdditionalNotes] = useState('');
@@ -26,8 +26,14 @@ export default function NewCaseScreen({ navigation }) {
   const [procedures, setProcedures] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showOtherPayerInput, setShowOtherPayerInput] = useState(false);
-  const [otherPayerName, setOtherPayerName] = useState('');
+  
+  // Team members dropdown state
+  const [teamMembersExpanded, setTeamMembersExpanded] = useState(false);
+  const [teamMemberSearchQuery, setTeamMemberSearchQuery] = useState('');
+  
+  // Procedure dropdown state
+  const [procedureExpanded, setProcedureExpanded] = useState(false);
+  const [procedureSearchQuery, setProcedureSearchQuery] = useState('');
 
   useEffect(() => {
     loadData();
@@ -57,45 +63,6 @@ export default function NewCaseScreen({ navigation }) {
       return;
     }
 
-    // If user entered a custom payer name, create it first
-    let finalPayerId = payerId;
-    if (showOtherPayerInput && otherPayerName.trim()) {
-      try {
-        const payerResponse = await api.post('/payers', {
-          name: otherPayerName.trim()
-        });
-        finalPayerId = payerResponse.data.payer.id;
-        // Refresh payers list and hide other input
-        setPayers([...payers, payerResponse.data.payer]);
-        setShowOtherPayerInput(false);
-        setOtherPayerName('');
-      } catch (error) {
-        // If payer already exists, try to find it
-        if (error.response?.status === 400 || error.response?.status === 409) {
-          // Reload payers to get the existing one
-          try {
-            const payersRes = await api.get('/payers');
-            const existingPayer = payersRes.data.payers.find(
-              p => p.name.toLowerCase() === otherPayerName.trim().toLowerCase()
-            );
-            if (existingPayer) {
-              finalPayerId = existingPayer.id;
-              setPayers(payersRes.data.payers);
-            } else {
-              Alert.alert('Error', 'Failed to create payer. Please try again.');
-              return;
-            }
-          } catch (reloadError) {
-            Alert.alert('Error', 'Failed to create payer. Please try again.');
-            return;
-          }
-        } else {
-          Alert.alert('Error', error.response?.data?.error || 'Failed to create payer');
-          return;
-        }
-      }
-    }
-
     setLoading(true);
     try {
       await api.post('/cases', {
@@ -104,9 +71,9 @@ export default function NewCaseScreen({ navigation }) {
         inpatientNumber: inpatientNumber || null,
         patientAge: patientAge ? parseInt(patientAge) : null,
         facilityId: facilityId || null,
-        payerId: finalPayerId || null,
+        payerId: payerId || null,
         invoiceNumber: invoiceNumber || null,
-        procedureIds: procedureIds.length > 0 ? procedureIds : [],
+        procedureId: procedureId || null,
         amount: amount ? parseFloat(amount) : null,
         paymentStatus,
         additionalNotes: additionalNotes || null,
@@ -131,8 +98,32 @@ export default function NewCaseScreen({ navigation }) {
     }
   };
 
+  // Filter team members based on search query
+  const filteredTeamMembers = teamMembers.filter(member => {
+    const searchLower = teamMemberSearchQuery.toLowerCase();
+    return (
+      member.name.toLowerCase().includes(searchLower) ||
+      member.role.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Filter procedures based on search query
+  const filteredProcedures = procedures.filter(procedure => {
+    const searchLower = procedureSearchQuery.toLowerCase();
+    return procedure.name.toLowerCase().includes(searchLower);
+  });
+
+  // Get selected procedure name for display
+  const getSelectedProcedureName = () => {
+    const selected = procedures.find(p => p.id === procedureId);
+    return selected ? selected.name : 'Select procedure';
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       <TextInput
         label="Date of Procedure *"
         value={dateOfProcedure.toLocaleDateString()}
@@ -140,12 +131,15 @@ export default function NewCaseScreen({ navigation }) {
         style={styles.input}
         onFocus={() => setShowDatePicker(true)}
         editable={false}
+        right={<TextInput.Icon icon="calendar" onPress={() => setShowDatePicker(true)} />}
       />
       {showDatePicker && (
         <DateTimePicker
           value={dateOfProcedure}
           mode="date"
           display="default"
+          minimumDate={undefined}
+          maximumDate={undefined}
           onChange={(event, selectedDate) => {
             setShowDatePicker(false);
             if (selectedDate) {
@@ -155,30 +149,72 @@ export default function NewCaseScreen({ navigation }) {
         />
       )}
 
-      <Text style={styles.sectionTitle}>Surgical Team Members</Text>
-      {teamMembers.map((member) => (
-        <View key={member.id} style={styles.checkboxRow}>
-          <Checkbox
-            status={selectedTeamMembers.includes(member.id) ? 'checked' : 'unchecked'}
-            onPress={() => toggleTeamMember(member.id)}
-          />
-          <Text style={styles.checkboxLabel}>
-            {member.name} ({member.role})
+      {/* Surgical Team Members - Collapsible Dropdown */}
+      <View style={styles.dropdownContainer}>
+        <TouchableOpacity
+          style={styles.dropdownHeader}
+          onPress={() => setTeamMembersExpanded(!teamMembersExpanded)}
+        >
+          <Text style={styles.dropdownHeaderText}>
+            Surgical Team Members {selectedTeamMembers.length > 0 && `(${selectedTeamMembers.length})`}
           </Text>
-        </View>
-      ))}
+          <IconButton
+            icon={teamMembersExpanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            onPress={() => setTeamMembersExpanded(!teamMembersExpanded)}
+          />
+        </TouchableOpacity>
+        
+        {teamMembersExpanded && (
+          <View style={styles.dropdownContent}>
+            <TextInput
+              label="Search team members"
+              value={teamMemberSearchQuery}
+              onChangeText={setTeamMemberSearchQuery}
+              mode="outlined"
+              style={styles.searchInput}
+              left={<TextInput.Icon icon="magnify" />}
+            />
+            <ScrollView style={styles.teamMembersList} nestedScrollEnabled>
+              {filteredTeamMembers.length === 0 ? (
+                <Text style={styles.noResultsText}>No team members found</Text>
+              ) : (
+                filteredTeamMembers.map((member) => (
+                  <TouchableOpacity
+                    key={member.id}
+                    style={styles.checkboxRow}
+                    onPress={() => toggleTeamMember(member.id)}
+                  >
+                    <Checkbox
+                      status={selectedTeamMembers.includes(member.id) ? 'checked' : 'unchecked'}
+                      onPress={() => toggleTeamMember(member.id)}
+                    />
+                    <Text style={styles.checkboxLabel}>
+                      {member.name} ({member.role})
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+            {selectedTeamMembers.length > 0 && (
+              <View style={styles.selectedMembersContainer}>
+                <Text style={styles.selectedMembersLabel}>Selected:</Text>
+                <Text style={styles.selectedMembersText}>
+                  {teamMembers
+                    .filter(m => selectedTeamMembers.includes(m.id))
+                    .map(m => `${m.name} (${m.role})`)
+                    .join(', ')}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
 
       <TextInput
         label="Patient Name *"
         value={patientName}
         onChangeText={setPatientName}
-        mode="outlined"
-        style={styles.input}
-      />
-      <TextInput
-        label="In-patient Number"
-        value={inpatientNumber}
-        onChangeText={setInpatientNumber}
         mode="outlined"
         style={styles.input}
       />
@@ -202,53 +238,20 @@ export default function NewCaseScreen({ navigation }) {
 
       <Text style={styles.label}>Payer</Text>
       <RNPickerSelect
-        onValueChange={(value) => {
-          if (value === 'other') {
-            setShowOtherPayerInput(true);
-            setPayerId('');
-          } else {
-            setShowOtherPayerInput(false);
-            setPayerId(value);
-            setOtherPayerName('');
-          }
-        }}
-        items={[
-          ...payers.map(p => ({ label: p.name, value: p.id })),
-          { label: 'Other', value: 'other' }
-        ]}
+        onValueChange={setPayerId}
+        items={payers.map(p => ({ label: p.name, value: p.id }))}
         placeholder={{ label: 'Select payer', value: '' }}
-        value={payerId || (showOtherPayerInput ? 'other' : '')}
+        value={payerId}
         style={pickerSelectStyles}
       />
-      {showOtherPayerInput && (
-        <View>
-          <TextInput
-            label="Enter Payer Name"
-            value={otherPayerName}
-            onChangeText={setOtherPayerName}
-            mode="outlined"
-            style={styles.input}
-            placeholder="e.g., New Insurance Company"
-          />
-        </View>
-      )}
 
-      <Text style={styles.sectionTitle}>Procedures</Text>
-      {procedures.map((procedure) => (
-        <View key={procedure.id} style={styles.checkboxRow}>
-          <Checkbox
-            status={procedureIds.includes(procedure.id) ? 'checked' : 'unchecked'}
-            onPress={() => {
-              if (procedureIds.includes(procedure.id)) {
-                setProcedureIds(procedureIds.filter(id => id !== procedure.id));
-              } else {
-                setProcedureIds([...procedureIds, procedure.id]);
-              }
-            }}
-          />
-          <Text style={styles.checkboxLabel}>{procedure.name}</Text>
-        </View>
-      ))}
+      <TextInput
+        label="In-patient Number"
+        value={inpatientNumber}
+        onChangeText={setInpatientNumber}
+        mode="outlined"
+        style={styles.input}
+      />
 
       <TextInput
         label="Invoice Number"
@@ -257,6 +260,63 @@ export default function NewCaseScreen({ navigation }) {
         mode="outlined"
         style={styles.input}
       />
+
+      {/* Procedure - Collapsible Dropdown with Search */}
+      <View style={styles.dropdownContainer}>
+        <TouchableOpacity
+          style={styles.dropdownHeader}
+          onPress={() => setProcedureExpanded(!procedureExpanded)}
+        >
+          <Text style={styles.dropdownHeaderText}>
+            Procedure {procedureId ? `- ${getSelectedProcedureName()}` : ''}
+          </Text>
+          <IconButton
+            icon={procedureExpanded ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            onPress={() => setProcedureExpanded(!procedureExpanded)}
+          />
+        </TouchableOpacity>
+        
+        {procedureExpanded && (
+          <View style={styles.dropdownContent}>
+            <TextInput
+              label="Search procedures"
+              value={procedureSearchQuery}
+              onChangeText={setProcedureSearchQuery}
+              mode="outlined"
+              style={styles.searchInput}
+              left={<TextInput.Icon icon="magnify" />}
+            />
+            <ScrollView style={styles.procedureList} nestedScrollEnabled>
+              {filteredProcedures.length === 0 ? (
+                <Text style={styles.noResultsText}>No procedures found</Text>
+              ) : (
+                filteredProcedures.map((procedure) => (
+                  <TouchableOpacity
+                    key={procedure.id}
+                    style={[
+                      styles.procedureItem,
+                      procedureId === procedure.id && styles.procedureItemSelected
+                    ]}
+                    onPress={() => {
+                      setProcedureId(procedure.id);
+                      setProcedureExpanded(false);
+                      setProcedureSearchQuery('');
+                    }}
+                  >
+                    <Text style={[
+                      styles.procedureItemText,
+                      procedureId === procedure.id && styles.procedureItemTextSelected
+                    ]}>
+                      {procedure.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        )}
+      </View>
 
       <TextInput
         label="Amount (KES)"
@@ -274,6 +334,7 @@ export default function NewCaseScreen({ navigation }) {
           { label: 'Pending', value: 'Pending' },
           { label: 'Paid', value: 'Paid' },
           { label: 'Partially Paid', value: 'Partially Paid' },
+          { label: 'Pro Bono', value: 'Pro Bono' },
           { label: 'Cancelled', value: 'Cancelled' }
         ]}
         value={paymentStatus}
@@ -298,6 +359,7 @@ export default function NewCaseScreen({ navigation }) {
       >
         Create Case
       </Button>
+      <View style={styles.bottomSpacer} />
     </ScrollView>
   );
 }
@@ -305,8 +367,11 @@ export default function NewCaseScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: theme.spacing.md,
     backgroundColor: theme.colors.background,
+  },
+  scrollContent: {
+    padding: theme.spacing.md,
+    paddingBottom: theme.spacing.xl * 2,
   },
   input: {
     marginBottom: theme.spacing.md,
@@ -334,8 +399,85 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
     backgroundColor: theme.colors.primary,
+  },
+  bottomSpacer: {
+    height: 100,
+  },
+  dropdownContainer: {
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+  },
+  dropdownHeaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    flex: 1,
+  },
+  dropdownContent: {
+    backgroundColor: '#f9f9f9',
+    padding: theme.spacing.md,
+  },
+  searchInput: {
+    marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
+  },
+  teamMembersList: {
+    maxHeight: 200,
+    marginBottom: theme.spacing.sm,
+  },
+  procedureList: {
+    maxHeight: 200,
+    marginBottom: theme.spacing.sm,
+  },
+  procedureItem: {
+    padding: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: theme.colors.background,
+  },
+  procedureItemSelected: {
+    backgroundColor: theme.colors.primary + '20',
+  },
+  procedureItemText: {
+    fontSize: 14,
+    color: theme.colors.text,
+  },
+  procedureItemTextSelected: {
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  noResultsText: {
+    textAlign: 'center',
+    color: theme.colors.textSecondary,
+    padding: theme.spacing.md,
+  },
+  selectedMembersContainer: {
+    marginTop: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.sm,
+  },
+  selectedMembersLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  selectedMembersText: {
+    fontSize: 14,
+    color: theme.colors.text,
   },
 });
 
