@@ -23,8 +23,11 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/invoices', require('./routes/invoices'));
 
-// Health check
+// Health check (both /health and /api/health for compatibility)
 app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
