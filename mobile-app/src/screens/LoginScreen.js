@@ -37,7 +37,16 @@ export default function LoginScreen() {
         navigation.navigate('Onboarding');
       }
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to login');
+      console.error('Login error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        networkError: error.networkError,
+        apiBaseUrl: error.apiBaseUrl,
+        code: error.code
+      });
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to login';
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

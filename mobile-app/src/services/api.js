@@ -47,19 +47,37 @@ api.interceptors.response.use(
   async (error) => {
     // Handle network errors
     if (!error.response) {
-      console.error('Network Error:', error.message);
-      console.error('API Base URL:', apiBaseUrl);
+      console.error('❌ Network Error:', error.message);
+      console.error('🔧 API Base URL:', apiBaseUrl);
+      console.error('🔧 Error Code:', error.code);
+      console.error('🔧 Error Config:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        baseURL: error.config?.baseURL
+      });
+      
       // Check if it's a timeout
       if (error.code === 'ECONNABORTED') {
-        console.error('Request timeout - server may be slow or unreachable');
-      } else if (error.message.includes('Network Error')) {
-        console.error('Network connection failed - check internet connection and server status');
+        console.error('⏱️ Request timeout - server may be slow or unreachable');
+        error.message = 'Request timeout. Please check your connection and try again.';
+      } else if (error.message.includes('Network Error') || error.message.includes('network')) {
+        console.error('🌐 Network connection failed - check internet connection and server status');
+        error.message = 'Network error. Please check your internet connection and try again.';
+      } else if (error.code === 'ECONNREFUSED') {
+        console.error('🚫 Connection refused - server may be down');
+        error.message = 'Cannot connect to server. Please check if the server is running.';
       }
+      
+      // Add more context to the error
+      error.networkError = true;
+      error.apiBaseUrl = apiBaseUrl;
     }
     
     // Handle auth errors
     if (error.response?.status === 401) {
+      console.error('🔐 Unauthorized - clearing auth token');
       await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('user');
       // Navigate to login (handled by App.js)
     }
     

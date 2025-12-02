@@ -41,7 +41,13 @@ export default function HomeScreen() {
       setCases(casesData);
     } catch (error) {
       console.error('Error loading cases:', error);
-      console.error('Error response:', error.response?.data);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        networkError: error.networkError,
+        apiBaseUrl: error.apiBaseUrl,
+        code: error.code
+      });
       const errorMessage = error.response?.data?.error || error.message || 'Failed to load cases';
       Alert.alert('Error', errorMessage);
       setCases([]); // Set empty array on error

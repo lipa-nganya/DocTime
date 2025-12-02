@@ -84,6 +84,13 @@ function MainTabs() {
         }
       } catch (error) {
         console.error('Error fetching user profile:', error);
+        console.error('Profile error details:', {
+          message: error.message,
+          response: error.response?.data,
+          networkError: error.networkError,
+          apiBaseUrl: error.apiBaseUrl,
+          code: error.code
+        });
         // If profile fetch fails, check if user is logged out
         const token = await AsyncStorage.getItem('authToken');
         if (!token) {
@@ -95,6 +102,9 @@ function MainTabs() {
               routes: [{ name: 'SignUp' }],
             })
           );
+        } else if (error.networkError) {
+          // Network error but user is still logged in - don't navigate away
+          console.warn('Network error fetching profile, but user token exists');
         }
       }
     } catch (error) {
