@@ -56,9 +56,13 @@ export default function NewCaseScreen({ navigation }) {
       setFacilities(facilitiesRes.data.facilities || []);
       setPayers(payersRes.data.payers || []);
       setProcedures(proceduresRes.data.procedures || []);
-      setTeamMembers(teamMembersRes.data.teamMembers || []);
+      const members = teamMembersRes.data.teamMembers || teamMembersRes.data.teamMember || [];
+      console.log('Loaded team members:', members.length, members);
+      setTeamMembers(members);
     } catch (error) {
       console.error('Error loading data:', error);
+      console.error('Error response:', error.response?.data);
+      Alert.alert('Error', 'Failed to load data. Please try again.');
     }
   };
 
@@ -119,10 +123,18 @@ export default function NewCaseScreen({ navigation }) {
 
   // Filter team members based on search query
   const filteredTeamMembers = teamMembers.filter(member => {
-    const searchLower = teamMemberSearchQuery.toLowerCase();
+    if (!teamMemberSearchQuery.trim()) {
+      return true; // Show all if search is empty
+    }
+    const searchLower = teamMemberSearchQuery.toLowerCase().trim();
+    const memberName = (member.name || '').toLowerCase();
+    const memberRole = (member.role || '').toLowerCase();
+    const otherRole = (member.otherRole || '').toLowerCase();
+    
     return (
-      member.name.toLowerCase().includes(searchLower) ||
-      member.role.toLowerCase().includes(searchLower)
+      memberName.includes(searchLower) ||
+      memberRole.includes(searchLower) ||
+      otherRole.includes(searchLower)
     );
   });
 
@@ -195,8 +207,12 @@ export default function NewCaseScreen({ navigation }) {
               left={<TextInput.Icon icon="magnify" />}
             />
             <ScrollView style={styles.teamMembersList} nestedScrollEnabled>
-              {filteredTeamMembers.length === 0 ? (
-                <Text style={styles.noResultsText}>No team members found</Text>
+              {teamMembers.length === 0 ? (
+                <Text style={styles.noResultsText}>No team members available. Add team members in the admin app.</Text>
+              ) : filteredTeamMembers.length === 0 ? (
+                <Text style={styles.noResultsText}>
+                  No team members found matching "{teamMemberSearchQuery}"
+                </Text>
               ) : (
                 filteredTeamMembers.map((member) => (
                   <TouchableOpacity
@@ -209,7 +225,7 @@ export default function NewCaseScreen({ navigation }) {
                       onPress={() => toggleTeamMember(member.id)}
                     />
                     <Text style={styles.checkboxLabel}>
-                      {member.name} ({member.role})
+                      {member.name} {member.otherRole ? `(${member.role} - ${member.otherRole})` : `(${member.role})`}
                     </Text>
                   </TouchableOpacity>
                 ))
@@ -221,7 +237,7 @@ export default function NewCaseScreen({ navigation }) {
                 <Text style={styles.selectedMembersText}>
                   {teamMembers
                     .filter(m => selectedTeamMembers.includes(m.id))
-                    .map(m => `${m.name} (${m.role})`)
+                    .map(m => `${m.name} ${m.otherRole ? `(${m.role} - ${m.otherRole})` : `(${m.role})`}`)
                     .join(', ')}
                 </Text>
               </View>
