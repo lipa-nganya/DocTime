@@ -1,71 +1,33 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-const normalizeBaseUrl = (value) => {
-  if (!value) return '';
-  return value.replace(/\/+$/, '');
-};
+// Get API base URL from build config or environment
+let apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl;
 
-const getBaseURL = () => {
-  const buildProfile = Constants.expoConfig?.extra?.environment || process.env.EXPO_PUBLIC_ENV || process.env.EXPO_PUBLIC_BUILD_PROFILE;
-  const bundleId = Constants.expoConfig?.ios?.bundleIdentifier || Constants.expoConfig?.android?.package;
-  const isLocalDevBuild = bundleId?.includes('.local') || bundleId?.includes('localdev');
-  
-  const envBase = normalizeBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
-  const configBase = normalizeBaseUrl(Constants.expoConfig?.extra?.apiBaseUrl);
-  
-  console.log('🔍 [API] Environment Detection:', {
-    buildProfile,
-    isLocalDevBuild,
-    envBase,
-    configBase,
-    bundleId,
-  });
-  
-  // Priority 1: Environment variable (from eas.json or OTA update)
-  if (envBase) {
-    console.log('🌐 [API] Using URL from EXPO_PUBLIC_API_BASE_URL:', `${envBase}/api`);
-    return `${envBase}/api`;
-  }
-  
-  // Priority 2: Config extra (from app.config.js - set during build)
-  if (configBase) {
-    console.log('🌐 [API] Using URL from app config extra.apiBaseUrl:', `${configBase}/api`);
-    return `${configBase}/api`;
-  }
-  
-  // Priority 3: Local dev fallback
-  if (buildProfile === 'local-dev' || isLocalDevBuild) {
-    // Should not reach here if configBase is set correctly
-    console.error('❌ [API] Local-dev mode but no API URL configured!');
-    console.error('❌ [API] Check app.config.js and eas.json');
-    // Still provide fallback for testing
-    return 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev/api';
-  }
-  
-  // Fallback for emulator
-  if (__DEV__ && Platform.OS === 'android') {
-    console.warn('⚠️ [API] Using emulator fallback (10.0.2.2)');
-    return 'http://10.0.2.2:5001/api';
-  }
-  
-  // Final fallback
-  console.error('❌ [API] No API URL configured!');
-  return 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev/api';
-};
+// If not in config, try environment variable
+if (!apiBaseUrl) {
+  apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+}
+
+// Fallback to ngrok URL for local-dev
+if (!apiBaseUrl || apiBaseUrl === 'http://localhost:5001' || apiBaseUrl.includes('localhost')) {
+  apiBaseUrl = 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
+}
+
+console.log('🔧 API Base URL:', apiBaseUrl);
+console.log('🔧 Config extra:', Constants.expoConfig?.extra);
 
 const api = axios.create({
-  baseURL: getBaseURL(),
-  timeout: 30000,
+  baseURL: `${apiBaseUrl}/api`,
   headers: {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true',
+    'ngrok-skip-browser-warning': 'true', // Skip ngrok browser warning
   },
+  timeout: 30000, // 30 second timeout
 });
 
-// Request interceptor - add token if available
+// Add token to requests
 api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('authToken');
@@ -79,19 +41,31 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - handle errors
+// Handle auth errors and network errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response) {
-      console.error('API Error:', error.response.status, error.response.data);
-    } else if (error.request) {
-      console.error('Network Error - No response received');
-    } else {
-      console.error('Error:', error.message);
+  async (error) => {
+    // Handle network errors
+    if (!error.response) {
+      console.error('Network Error:', error.message);
+      console.error('API Base URL:', apiBaseUrl);
+      // Check if it's a timeout
+      if (error.code === 'ECONNABORTED') {
+        console.error('Request timeout - server may be slow or unreachable');
+      } else if (error.message.includes('Network Error')) {
+        console.error('Network connection failed - check internet connection and server status');
+      }
     }
+    
+    // Handle auth errors
+    if (error.response?.status === 401) {
+      await AsyncStorage.removeItem('authToken');
+      // Navigate to login (handled by App.js)
+    }
+    
     return Promise.reject(error);
   }
 );
 
 export default api;
+
