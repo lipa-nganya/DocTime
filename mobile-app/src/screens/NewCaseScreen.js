@@ -53,16 +53,28 @@ export default function NewCaseScreen({ navigation }) {
         api.get('/team-members')
       ]);
 
-      setFacilities(facilitiesRes.data.facilities || []);
-      setPayers(payersRes.data.payers || []);
-      setProcedures(proceduresRes.data.procedures || []);
-      const members = teamMembersRes.data.teamMembers || teamMembersRes.data.teamMember || [];
-      console.log('Loaded team members:', members.length, members);
+      // Handle different response formats
+      const facilitiesData = facilitiesRes.data.facilities || facilitiesRes.data.data?.facilities || [];
+      const payersData = payersRes.data.payers || payersRes.data.data?.payers || [];
+      const proceduresData = proceduresRes.data.procedures || proceduresRes.data.data?.procedures || [];
+      const members = teamMembersRes.data.teamMembers || teamMembersRes.data.teamMember || teamMembersRes.data.data?.teamMembers || [];
+      
+      console.log('Loaded data:', {
+        facilities: facilitiesData.length,
+        payers: payersData.length,
+        procedures: proceduresData.length,
+        teamMembers: members.length
+      });
+      
+      setFacilities(facilitiesData);
+      setPayers(payersData);
+      setProcedures(proceduresData);
       setTeamMembers(members);
     } catch (error) {
       console.error('Error loading data:', error);
       console.error('Error response:', error.response?.data);
-      Alert.alert('Error', 'Failed to load data. Please try again.');
+      console.error('Error status:', error.response?.status);
+      Alert.alert('Error', `Failed to load data: ${error.response?.data?.error || error.message}`);
     }
   };
 
@@ -108,7 +120,23 @@ export default function NewCaseScreen({ navigation }) {
         }, 1500);
       }
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to create case');
+      console.error('Error creating case:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Request data:', {
+        dateOfProcedure: dateOfProcedure.toISOString(),
+        patientName,
+        facilityId,
+        payerId,
+        procedureId,
+        teamMemberIds: selectedTeamMembers
+      });
+      
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Failed to create case';
+      Alert.alert('Error', errorMessage);
       setLoading(false);
     }
   };
@@ -140,8 +168,12 @@ export default function NewCaseScreen({ navigation }) {
 
   // Filter procedures based on search query
   const filteredProcedures = procedures.filter(procedure => {
-    const searchLower = procedureSearchQuery.toLowerCase();
-    return procedure.name.toLowerCase().includes(searchLower);
+    if (!procedureSearchQuery.trim()) {
+      return true; // Show all if search is empty
+    }
+    const searchLower = procedureSearchQuery.toLowerCase().trim();
+    const procedureName = (procedure.name || '').toLowerCase();
+    return procedureName.includes(searchLower);
   });
 
   // Get selected procedure name for display
@@ -263,22 +295,30 @@ export default function NewCaseScreen({ navigation }) {
       />
 
       <Text style={styles.label}>Facility / Hospital</Text>
-      <RNPickerSelect
-        onValueChange={setFacilityId}
-        items={facilities.map(f => ({ label: f.name, value: f.id }))}
-        placeholder={{ label: 'Select facility', value: '' }}
-        value={facilityId}
-        style={pickerSelectStyles}
-      />
+      {facilities.length === 0 ? (
+        <Text style={styles.emptyStateText}>No facilities available. Add facilities in the admin app.</Text>
+      ) : (
+        <RNPickerSelect
+          onValueChange={setFacilityId}
+          items={facilities.map(f => ({ label: f.name, value: f.id }))}
+          placeholder={{ label: 'Select facility', value: '' }}
+          value={facilityId}
+          style={pickerSelectStyles}
+        />
+      )}
 
       <Text style={styles.label}>Payer</Text>
-      <RNPickerSelect
-        onValueChange={setPayerId}
-        items={payers.map(p => ({ label: p.name, value: p.id }))}
-        placeholder={{ label: 'Select payer', value: '' }}
-        value={payerId}
-        style={pickerSelectStyles}
-      />
+      {payers.length === 0 ? (
+        <Text style={styles.emptyStateText}>No payers available. Add payers in the admin app.</Text>
+      ) : (
+        <RNPickerSelect
+          onValueChange={setPayerId}
+          items={payers.map(p => ({ label: p.name, value: p.id }))}
+          placeholder={{ label: 'Select payer', value: '' }}
+          value={payerId}
+          style={pickerSelectStyles}
+        />
+      )}
 
       <TextInput
         label="In-patient Number"
@@ -322,9 +362,17 @@ export default function NewCaseScreen({ navigation }) {
               style={styles.searchInput}
               left={<TextInput.Icon icon="magnify" />}
             />
-            <ScrollView style={styles.procedureList} nestedScrollEnabled>
-              {filteredProcedures.length === 0 ? (
-                <Text style={styles.noResultsText}>No procedures found</Text>
+            <ScrollView 
+              style={styles.procedureList} 
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
+              {procedures.length === 0 ? (
+                <Text style={styles.noResultsText}>No procedures available. Add procedures in the admin app.</Text>
+              ) : filteredProcedures.length === 0 ? (
+                <Text style={styles.noResultsText}>
+                  No procedures found matching "{procedureSearchQuery}"
+                </Text>
               ) : (
                 filteredProcedures.map((procedure) => (
                   <TouchableOpacity
@@ -485,8 +533,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   procedureList: {
-    maxHeight: 200,
+    maxHeight: 250,
     marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
   },
   procedureItem: {
     padding: theme.spacing.md,
@@ -509,6 +558,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: theme.colors.textSecondary,
     padding: theme.spacing.md,
+    fontSize: 14,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   selectedMembersContainer: {
     marginTop: theme.spacing.sm,
