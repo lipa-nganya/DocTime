@@ -22,6 +22,7 @@ const api = axios.create({
   baseURL: `${apiBaseUrl}/api`,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
     'ngrok-skip-browser-warning': 'true', // Skip ngrok browser warning
     'User-Agent': 'DocTime-Mobile-App', // Custom user agent
   },
