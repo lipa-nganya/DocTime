@@ -26,7 +26,7 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "apiBaseUrl": "https://homiest-psychopharmacologic-anaya.ngrok-free.dev",
+      "apiBaseUrl": "https://your-backend-url.run.app",
       "environment": "production",
       "eas": {
         "projectId": "99962261-3ad5-4037-b1e7-58145d9b2e5b"

@@ -1,13 +1,12 @@
 export const theme = {
   colors: {
-    primary: '#4ECDC4', // Strong Cyan (teal)
+    primary: '#4ECDC4', // Strong Cyan
     secondary: '#292F36', // Jet Black
     accent: '#FF6B6B', // Grapefruit Pink
     white: '#FFFFFF',
     text: '#292F36',
     textSecondary: '#666666',
     background: '#FFFFFF',
-    appBackground: '#393D7E', // App background color from logo
     error: '#FF6B6B',
     success: '#4ECDC4',
   },

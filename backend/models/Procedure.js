@@ -22,11 +22,7 @@ module.exports = (sequelize) => {
   });
 
   Procedure.associate = (models) => {
-    Procedure.belongsToMany(models.Case, {
-      through: models.CaseProcedure,
-      foreignKey: 'procedureId',
-      as: 'cases'
-    });
+    Procedure.hasMany(models.Case, { foreignKey: 'procedureId', as: 'cases' });
   };
 
   return Procedure;

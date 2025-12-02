@@ -98,65 +98,16 @@ router.post('/request-otp', [
  * Verify OTP and sign up
  */
 router.post('/signup', [
-  // Accept phone number in various formats (0712345678, +254712345678, 254712345678)
-  body('phoneNumber')
-    .notEmpty()
-    .withMessage('Phone number is required')
-    .custom((value) => {
-      // Remove all non-digit characters except +
-      const cleaned = value.replace(/[\s\-\(\)]/g, '');
-      // Check if it's a valid Kenyan mobile format
-      // Accepts: 0712345678, +254712345678, 254712345678, 712345678
-      const kenyanMobileRegex = /^(\+?254|0)?7\d{8}$/;
-      if (!kenyanMobileRegex.test(cleaned)) {
-        throw new Error('Invalid Kenyan mobile phone number format');
-      }
-      return true;
-    }),
-  body('otp').isLength({ min: 4, max: 4 }).withMessage('OTP must be 4 digits'),
-  body('pin').isLength({ min: 4, max: 6 }).withMessage('PIN must be between 4 and 6 digits'),
-  // Role is optional during signup - will be set during onboarding
-  body('role').optional().isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']).withMessage('Invalid role'),
-  body('otherRole').optional({ nullable: true, checkFalsy: true }).custom((value) => {
-    // Accept null, undefined, or a string
-    if (value === null || value === undefined) return true;
-    return typeof value === 'string';
-  }).withMessage('otherRole must be a string or null')
+  body('phoneNumber').isMobilePhone('en-KE'),
+  body('otp').isLength({ min: 4, max: 4 }),
+  body('pin').isLength({ min: 4, max: 6 }),
+  body('role').isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']),
+  body('otherRole').optional().isString()
 ], async (req, res) => {
   try {
-    // Log incoming request data for debugging
-    console.log('📥 Signup request received:', {
-      phoneNumber: req.body.phoneNumber,
-      otp: req.body.otp ? '****' : 'missing',
-      pin: req.body.pin ? '****' : 'missing',
-      role: req.body.role,
-      otherRole: req.body.otherRole
-    });
-    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const errorArray = errors.array();
-      console.error('❌ Validation errors:', JSON.stringify(errorArray, null, 2));
-      console.error('❌ Full error details:', {
-        count: errorArray.length,
-        errors: errorArray.map(e => ({
-          param: e.param,
-          msg: e.msg,
-          location: e.location,
-          value: e.value
-        }))
-      });
-      
-      // Get the first error with proper field name
-      const firstError = errorArray[0];
-      const fieldName = firstError?.param || firstError?.path || 'unknown';
-      const errorMessage = firstError?.msg || 'Invalid value';
-      
-      return res.status(400).json({ 
-        error: errorMessage,
-        field: fieldName,
-        errors: errorArray 
-      });
+      return res.status(400).json({ errors: errors.array() });
     }
 
     const { phoneNumber, otp, pin, role, otherRole } = req.body;
@@ -199,11 +150,10 @@ router.post('/signup', [
     const pinHash = await bcrypt.hash(pin, 10);
 
     // Create user
-    // Role will be set during onboarding, use 'Surgeon' as default if not provided
     const user = await User.create({
       phoneNumber: formattedPhone,
       pinHash,
-      role: role || 'Surgeon', // Default to Surgeon if not provided (will be updated in onboarding)
+      role,
       otherRole: role === 'Other' ? otherRole : null,
       isVerified: true,
       signupOTP: otp // Store OTP for admin display
@@ -226,7 +176,9 @@ router.post('/signup', [
         id: user.id,
         phoneNumber: user.phoneNumber,
         role: user.role,
-        otherRole: user.otherRole
+        otherRole: user.otherRole,
+        prefix: user.prefix,
+        preferredName: user.preferredName
       }
     });
   } catch (error) {
@@ -305,128 +257,14 @@ router.post('/login', [
         phoneNumber: user.phoneNumber,
         role: user.role,
         otherRole: user.otherRole,
+        prefix: user.prefix,
+        preferredName: user.preferredName,
         biometricEnabled: user.biometricEnabled
       }
     });
   } catch (error) {
     console.error('Error logging in:', error);
     res.status(500).json({ error: 'Failed to login' });
-  }
-});
-
-/**
- * Update user profile
- */
-router.put('/profile', authenticateToken, [
-  body('firstName')
-    .notEmpty()
-    .withMessage('First name is required')
-    .isString()
-    .withMessage('First name must be a string')
-    .trim()
-    .isLength({ min: 1 })
-    .withMessage('First name cannot be empty'),
-  body('prefix')
-    .notEmpty()
-    .withMessage('Prefix is required')
-    .isIn(['Mr', 'Miss', 'Dr', 'Mrs'])
-    .withMessage('Prefix must be one of: Mr, Miss, Dr, Mrs'),
-  body('role')
-    .notEmpty()
-    .withMessage('Role is required')
-    .isIn(['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other'])
-    .withMessage('Invalid role'),
-  body('otherRole')
-    .optional({ nullable: true, checkFalsy: true })
-    .isString()
-    .withMessage('Other role must be a string')
-    .trim()
-], async (req, res) => {
-  try {
-    console.log('📝 Profile update request:', {
-      userId: req.userId,
-      firstName: req.body.firstName,
-      prefix: req.body.prefix,
-      role: req.body.role,
-      otherRole: req.body.otherRole,
-      bodyKeys: Object.keys(req.body)
-    });
-    
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.error('❌ Validation errors:', errors.array());
-      return res.status(400).json({ 
-        error: errors.array()[0]?.msg || 'Validation failed',
-        errors: errors.array() 
-      });
-    }
-
-    const user = await User.findByPk(req.userId);
-    if (!user) {
-      console.error('❌ User not found:', req.userId);
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const updateData = {
-      firstName: req.body.firstName.trim(),
-      prefix: req.body.prefix,
-      role: req.body.role,
-      otherRole: req.body.role === 'Other' ? (req.body.otherRole?.trim() || null) : null
-    };
-
-    console.log('📝 Updating user with:', updateData);
-    
-    try {
-      await user.update(updateData);
-      // Reload user to get updated data
-      await user.reload();
-      console.log('✅ User updated successfully:', {
-        id: user.id,
-        firstName: user.firstName,
-        prefix: user.prefix,
-        role: user.role
-      });
-    } catch (updateError) {
-      console.error('❌ Error during user.update():', updateError);
-      console.error('❌ Update error details:', {
-        message: updateError.message,
-        name: updateError.name,
-        errors: updateError.errors
-      });
-      throw updateError;
-    }
-
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        phoneNumber: user.phoneNumber,
-        firstName: user.firstName,
-        prefix: user.prefix,
-        role: user.role,
-        otherRole: user.otherRole
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error updating profile:', error);
-    console.error('❌ Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-      userId: req.userId
-    });
-    
-    // Provide more specific error messages
-    if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ 
-        error: error.errors.map(e => e.message).join(', ') 
-      });
-    }
-    
-    res.status(500).json({ 
-      error: error.message || 'Failed to update profile',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
   }
 });
 
@@ -465,6 +303,63 @@ router.post('/verify-token', async (req, res) => {
 });
 
 /**
+ * Update user profile
+ */
+router.put('/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const { prefix, preferredName, role, otherRole } = req.body;
+    const updateData = {};
+
+    if (prefix !== undefined) updateData.prefix = prefix;
+    if (preferredName !== undefined) updateData.preferredName = preferredName;
+    if (role !== undefined) updateData.role = role;
+    if (otherRole !== undefined) updateData.otherRole = otherRole;
+
+    await user.update(updateData);
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        otherRole: user.otherRole,
+        prefix: user.prefix,
+        preferredName: user.preferredName
+      }
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+/**
+ * Get current user profile
+ */
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.userId, {
+      attributes: ['id', 'phoneNumber', 'role', 'otherRole', 'prefix', 'preferredName', 'biometricEnabled']
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+/**
  * Middleware to verify JWT token
  */
 function authenticateToken(req, res, next) {
@@ -483,138 +378,6 @@ function authenticateToken(req, res, next) {
     next();
   });
 }
-
-/**
- * Request PIN reset OTP
- */
-router.post('/request-reset-pin', authenticateToken, [
-  body('phoneNumber').notEmpty().withMessage('Phone number is required')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
-    }
-
-    const { phoneNumber } = req.body;
-    
-    // Format phone number
-    let formattedPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '254' + formattedPhone.substring(1);
-    }
-    if (!formattedPhone.startsWith('254')) {
-      formattedPhone = '254' + formattedPhone;
-    }
-    formattedPhone = formattedPhone.replace(/\D/g, '');
-
-    // Verify user exists
-    const user = await User.findOne({ where: { phoneNumber: formattedPhone } });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Generate OTP
-    const otp = generateOTP();
-    
-    // Store OTP (expires in 10 minutes)
-    otpStore.set(formattedPhone + '_reset', {
-      otp,
-      expiresAt: Date.now() + 10 * 60 * 1000
-    });
-
-    // Send OTP via SMS if enabled
-    const Settings = require('../models').Settings;
-    const smsSetting = await Settings.findOne({ where: { key: 'ENABLE_SMS' } });
-    const enableSms = smsSetting?.value === 'true' || process.env.ENABLE_SMS === 'true';
-
-    if (enableSms) {
-      try {
-        await sendOTP(formattedPhone, otp);
-      } catch (smsError) {
-        console.error('Failed to send SMS:', smsError);
-        // Still return success with OTP in dev mode
-        if (process.env.NODE_ENV === 'development') {
-          return res.json({ success: true, otp, message: 'OTP sent (dev mode)' });
-        }
-        return res.status(500).json({ error: 'Failed to send OTP' });
-      }
-    }
-
-    // In dev mode or if SMS is disabled, return OTP
-    if (!enableSms || process.env.NODE_ENV === 'development') {
-      return res.json({ success: true, otp, message: 'OTP generated (dev mode)' });
-    }
-
-    res.json({ success: true, message: 'OTP sent to your phone' });
-  } catch (error) {
-    console.error('Error requesting PIN reset:', error);
-    res.status(500).json({ error: 'Failed to request PIN reset' });
-  }
-});
-
-/**
- * Reset PIN
- */
-router.post('/reset-pin', authenticateToken, [
-  body('phoneNumber').notEmpty().withMessage('Phone number is required'),
-  body('otp').isLength({ min: 4, max: 4 }).withMessage('OTP must be 4 digits'),
-  body('newPin').isLength({ min: 4, max: 6 }).withMessage('PIN must be between 4 and 6 digits')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
-    }
-
-    const { phoneNumber, otp, newPin } = req.body;
-    
-    // Format phone number
-    let formattedPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '254' + formattedPhone.substring(1);
-    }
-    if (!formattedPhone.startsWith('254')) {
-      formattedPhone = '254' + formattedPhone;
-    }
-    formattedPhone = formattedPhone.replace(/\D/g, '');
-
-    // Verify OTP
-    const storedOtp = otpStore.get(formattedPhone + '_reset');
-    if (!storedOtp) {
-      return res.status(400).json({ error: 'Invalid or expired OTP. Please request a new OTP.' });
-    }
-
-    if (Date.now() > storedOtp.expiresAt) {
-      otpStore.delete(formattedPhone + '_reset');
-      return res.status(400).json({ error: 'OTP has expired. Please request a new OTP.' });
-    }
-
-    if (storedOtp.otp !== otp) {
-      return res.status(400).json({ error: 'Invalid OTP. Please check and try again.' });
-    }
-
-    // Find user
-    const user = await User.findOne({ where: { phoneNumber: formattedPhone } });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Hash new PIN
-    const pinHash = await bcrypt.hash(newPin, 10);
-
-    // Update PIN
-    await user.update({ pinHash });
-
-    // Clear OTP
-    otpStore.delete(formattedPhone + '_reset');
-
-    res.json({ success: true, message: 'PIN reset successfully' });
-  } catch (error) {
-    console.error('Error resetting PIN:', error);
-    res.status(500).json({ error: 'Failed to reset PIN' });
-  }
-});
 
 module.exports = router;
 module.exports.authenticateToken = authenticateToken;

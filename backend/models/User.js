@@ -21,16 +21,12 @@ module.exports = (sequelize) => {
     },
     role: {
       type: DataTypes.STRING,
-      allowNull: true, // Made nullable as it's set during onboarding
+      allowNull: false,
       validate: {
-        isIn: [['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other', null]]
+        isIn: [['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']]
       }
     },
     otherRole: {
-      type: DataTypes.STRING,
-      allowNull: true
-    },
-    firstName: {
       type: DataTypes.STRING,
       allowNull: true
     },
@@ -38,8 +34,12 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
-        isIn: [['Mr', 'Miss', 'Dr', 'Mrs', null]]
+        isIn: [['Dr.', 'Mr.', 'Mrs.', 'Ms.', 'Miss', 'Prof.']]
       }
+    },
+    preferredName: {
+      type: DataTypes.STRING,
+      allowNull: true
     },
     biometricEnabled: {
       type: DataTypes.BOOLEAN,

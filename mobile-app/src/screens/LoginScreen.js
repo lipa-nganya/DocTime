@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, Image } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -24,6 +24,7 @@ export default function LoginScreen() {
       const response = await api.post('/auth/login', { phoneNumber, pin });
       
       await AsyncStorage.setItem('authToken', response.data.token);
+      // Store full user object including prefix and preferredName
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
       
       const isOnboarded = await AsyncStorage.getItem('isOnboarded');
@@ -86,11 +87,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Image 
-        source={require('../../assets/logo.png')} 
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <Text style={styles.title}>Doc Time</Text>
       <Text style={styles.subtitle}>Login</Text>
 
       <TextInput
@@ -143,13 +140,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
-    backgroundColor: theme.colors.appBackground,
-  },
-  logo: {
-    width: 200,
-    height: 120,
-    alignSelf: 'center',
-    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
   },
   title: {
     fontSize: 32,

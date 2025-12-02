@@ -1,39 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { TextInput, Button, Text, SegmentedButtons } from 'react-native-paper';
+import { TextInput, Button, Text, RadioButton } from 'react-native-paper';
 import RNPickerSelect from 'react-native-picker-select';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { theme } from '../theme';
 
-const ROLES = [
-  { label: 'Surgeon', value: 'Surgeon' },
-  { label: 'Assistant Surgeon', value: 'Assistant Surgeon' },
-  { label: 'Anaesthetist', value: 'Anaesthetist' },
-  { label: 'Assistant Anaesthetist', value: 'Assistant Anaesthetist' },
-  { label: 'Other', value: 'Other' }
-];
-const PREFIXES = ['Mr', 'Miss', 'Dr', 'Mrs'];
+const ROLES = ['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other'];
+const PREFIXES = ['Dr.', 'Mr.', 'Mrs.', 'Ms.', 'Miss', 'Prof.'];
 
 export default function OnboardingScreen() {
   const navigation = useNavigation();
-  const [firstName, setFirstName] = useState('');
   const [prefix, setPrefix] = useState('');
+  const [preferredName, setPreferredName] = useState('');
   const [role, setRole] = useState('');
   const [otherRole, setOtherRole] = useState('');
   const [loading, setLoading] = useState(false);
-  const [hasNavigated, setHasNavigated] = useState(false); // Prevent double navigation
-
 
   const handleComplete = async () => {
-    if (!firstName.trim()) {
-      Alert.alert('Error', 'Please enter your first name');
-      return;
-    }
-
-    if (!prefix) {
-      Alert.alert('Error', 'Please select your prefix');
+    if (!preferredName) {
+      Alert.alert('Error', 'Please enter your preferred name');
       return;
     }
 
@@ -42,83 +29,35 @@ export default function OnboardingScreen() {
       return;
     }
 
-    if (role === 'Other' && !otherRole.trim()) {
+    if (role === 'Other' && !otherRole) {
       Alert.alert('Error', 'Please specify your role');
       return;
     }
 
     setLoading(true);
     try {
-      // Check if token exists
-      const token = await AsyncStorage.getItem('authToken');
-      if (!token) {
-        Alert.alert('Error', 'Please sign up again. Session expired.');
-        navigation.replace('SignUp');
-        return;
-      }
-      
-      console.log('📝 Updating profile:', {
-        firstName: firstName.trim(),
-        prefix,
+      // Update user profile
+      const response = await api.put('/auth/profile', {
+        prefix: prefix || null,
+        preferredName,
         role,
-        otherRole: role === 'Other' ? otherRole.trim() : null,
-        hasToken: !!token
+        otherRole: role === 'Other' ? otherRole : null
       });
-      
-      // Prevent double submission
-      if (hasNavigated) {
-        console.log('⚠️ Already navigated, skipping');
-        return;
-      }
 
-      const requestData = {
-        firstName: firstName.trim(),
-        prefix,
-        role,
-        otherRole: role === 'Other' ? otherRole.trim() : null
-      };
+      // Update stored user data
+      const userData = JSON.parse(await AsyncStorage.getItem('user') || '{}');
+      await AsyncStorage.setItem('user', JSON.stringify({
+        ...userData,
+        ...response.data.user
+      }));
 
-      // Make the API call - backend returns { success: true, user: {...} }
-      const response = await api.put('/auth/profile', requestData);
-
-      // Check response - backend returns { success: true, user: {...} }
-      if (response && response.status >= 200 && response.status < 300 && response.data) {
-        // Check for success flag or assume success if status is 200-299
-        if (response.data.success !== false) {
-          // Save onboarding status
-          await AsyncStorage.setItem('isOnboarded', 'true');
-          
-          setHasNavigated(true);
-          
-          // Navigate to MainTabs
-          navigation.replace('MainTabs');
-        } else {
-          throw new Error(response.data.error || 'Profile update failed');
-        }
-      } else {
-        throw new Error(`Invalid response: Status ${response?.status || 'unknown'}`);
-      }
+      await AsyncStorage.setItem('isOnboarded', 'true');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
     } catch (error) {
-      console.error('❌ Onboarding error:', error);
-      console.error('❌ Error response:', error.response?.data);
-      console.error('❌ Error status:', error.response?.status);
-      console.error('❌ Error message:', error.message);
-      console.error('❌ Full error:', JSON.stringify(error, null, 2));
-      
-      let errorMsg = `Failed to save profile\n\nBackend: ${api.defaults.baseURL}`;
-      if (error.response?.data?.error) {
-        errorMsg = `${error.response.data.error}\n\nBackend: ${api.defaults.baseURL}\nStatus: ${error.response.status}`;
-      } else if (error.response?.data?.errors && error.response.data.errors.length > 0) {
-        errorMsg = `${error.response.data.errors[0].msg || error.response.data.errors[0].message}\n\nBackend: ${api.defaults.baseURL}\nStatus: ${error.response.status}`;
-      } else if (error.message) {
-        errorMsg = `${error.message}\n\nBackend: ${api.defaults.baseURL}`;
-      } else if (error.response) {
-        errorMsg = `HTTP ${error.response.status}\n\nBackend: ${api.defaults.baseURL}`;
-      } else if (error.request) {
-        errorMsg = `No response from server\n\nBackend: ${api.defaults.baseURL}\n\nCheck your internet connection`;
-      }
-      
-      Alert.alert('Error', errorMsg);
+      Alert.alert('Error', error.response?.data?.error || 'Failed to save profile');
     } finally {
       setLoading(false);
     }
@@ -129,52 +68,34 @@ export default function OnboardingScreen() {
       <Text style={styles.title}>Welcome to Doc Time</Text>
       <Text style={styles.subtitle}>Let's set up your profile</Text>
 
+      <Text style={styles.sectionLabel}>Prefix (Optional)</Text>
+      <RNPickerSelect
+        onValueChange={setPrefix}
+        items={PREFIXES.map(p => ({ label: p, value: p }))}
+        placeholder={{ label: 'Select prefix', value: '' }}
+        value={prefix}
+        style={pickerSelectStyles}
+      />
+
       <TextInput
-        label="Preferred Name (First Name)"
-        value={firstName}
-        onChangeText={setFirstName}
+        label="Preferred Name *"
+        value={preferredName}
+        onChangeText={setPreferredName}
         mode="outlined"
         style={styles.input}
-        autoCapitalize="words"
-        placeholder="Enter your first name"
+        placeholder="Enter your preferred name"
       />
 
-      <Text style={styles.sectionTitle}>Prefix</Text>
-      <SegmentedButtons
-        value={prefix}
-        onValueChange={setPrefix}
-        buttons={PREFIXES.map(p => ({
-          value: p,
-          label: p
-        }))}
-        style={styles.segmentedButtons}
-        theme={{
-          colors: {
-            secondaryContainer: theme.colors.primary,
-            onSecondaryContainer: theme.colors.white,
-          }
-        }}
-      />
+      <Text style={styles.sectionLabel}>What role best describes you?</Text>
 
-      <Text style={styles.sectionTitle}>What role best describes you?</Text>
-      <View style={styles.pickerContainer}>
-        <RNPickerSelect
-          onValueChange={(value) => setRole(value)}
-          items={ROLES}
-          value={role}
-          placeholder={{
-            label: 'Select your role',
-            value: null,
-          }}
-          style={{
-            inputIOS: styles.pickerInput,
-            inputAndroid: styles.pickerInput,
-            placeholder: {
-              color: theme.colors.textSecondary,
-            },
-          }}
-        />
-      </View>
+      <RadioButton.Group onValueChange={setRole} value={role}>
+        {ROLES.map((r) => (
+          <View key={r} style={styles.radioRow}>
+            <RadioButton value={r} />
+            <Text style={styles.radioLabel}>{r}</Text>
+          </View>
+        ))}
+      </RadioButton.Group>
 
       {role === 'Other' && (
         <TextInput
@@ -190,7 +111,6 @@ export default function OnboardingScreen() {
         mode="contained"
         onPress={handleComplete}
         loading={loading}
-        disabled={loading}
         style={styles.button}
       >
         Continue
@@ -219,36 +139,53 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: theme.spacing.xl,
   },
-  sectionTitle: {
+  radioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  radioLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    marginLeft: theme.spacing.sm,
   },
   input: {
+    marginTop: theme.spacing.md,
     marginBottom: theme.spacing.md,
-  },
-  segmentedButtons: {
-    marginBottom: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-  },
-  pickerContainer: {
-    marginBottom: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.textSecondary,
-    borderRadius: 4,
-    backgroundColor: theme.colors.background,
-  },
-  pickerInput: {
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    color: theme.colors.text,
-    backgroundColor: theme.colors.background,
   },
   button: {
     marginTop: theme.spacing.xl,
     backgroundColor: theme.colors.primary,
   },
+  sectionLabel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+    marginTop: theme.spacing.md,
+  },
 });
+
+const pickerSelectStyles = {
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    color: theme.colors.text,
+    paddingRight: 30,
+    marginBottom: theme.spacing.md,
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    color: theme.colors.text,
+    paddingRight: 30,
+    marginBottom: theme.spacing.md,
+  },
+};
+

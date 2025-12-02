@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useFocusEffect, useNavigation, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider as PaperProvider } from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { IconButton } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
+import { useCallback } from 'react';
+import { Alert, Text } from 'react-native';
 
 import SignUpScreen from './src/screens/SignUpScreen';
 import LoginScreen from './src/screens/LoginScreen';
@@ -17,183 +19,201 @@ import CaseDetailsScreen from './src/screens/CaseDetailsScreen';
 import CaseHistoryScreen from './src/screens/CaseHistoryScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
 import ReferCaseScreen from './src/screens/ReferCaseScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
-import ResetPINScreen from './src/screens/ResetPINScreen';
+import api from './src/services/api';
 
 import { theme } from './src/theme';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
+const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || 'http://localhost:5001';
 
 function MainTabs() {
-  const [user, setUser] = React.useState(null);
+  const navigation = useNavigation();
+  const [user, setUser] = useState(null);
 
-  React.useEffect(() => {
-    loadUser();
-  }, []);
+  const handleLogout = useCallback(async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Clear all auth-related data
+              await AsyncStorage.multiRemove(['authToken', 'user', 'isOnboarded']);
+              setUser(null);
+              
+              // Reset navigation to SignUp screen
+              // Get the root navigator (the Stack navigator)
+              const rootNavigation = navigation.getParent() || navigation;
+              rootNavigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'SignUp' }],
+                })
+              );
+            } catch (error) {
+              console.error('Error logging out:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  }, [navigation]);
 
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     try {
-      const userStr = await AsyncStorage.getItem('user');
-      if (userStr) {
-        setUser(JSON.parse(userStr));
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
+      // Always try to fetch latest from API to ensure we have prefix/preferredName
+      try {
+        const response = await api.get('/auth/profile');
+        if (response.data.user) {
+          setUser(response.data.user);
+          await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        // If profile fetch fails, check if user is logged out
+        const token = await AsyncStorage.getItem('authToken');
+        if (!token) {
+          // User is logged out, navigate to SignUp
+          const rootNavigation = navigation.getParent() || navigation;
+          rootNavigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'SignUp' }],
+            })
+          );
+        }
       }
     } catch (error) {
       console.error('Error loading user:', error);
     }
-  };
+  }, [navigation]);
 
-  const getUserGreeting = () => {
-    if (user?.prefix && user?.firstName) {
-      return `Hi ${user.prefix} ${user.firstName}`;
+  React.useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
+  // Refresh user data when tabs come into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadUser();
+    }, [loadUser])
+  );
+
+  const getGreeting = () => {
+    if (!user) return 'Hi';
+    const prefix = user.prefix || '';
+    const name = user.preferredName || '';
+    if (prefix && name) {
+      return `Hi ${prefix} ${name}`;
+    } else if (name) {
+      return `Hi ${name}`;
+    } else if (prefix) {
+      return `Hi ${prefix}`;
     }
     return 'Hi';
   };
 
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
         headerStyle: {
           backgroundColor: theme.colors.primary,
         },
         headerTintColor: theme.colors.white,
-      }}
+        headerTitle: () => {
+          const greeting = getGreeting();
+          return <Text style={{ color: theme.colors.white, fontSize: 18, fontWeight: 'bold' }}>{greeting}</Text>;
+        },
+        headerRight: () => (
+          <IconButton
+            icon="logout"
+            iconColor={theme.colors.white}
+            size={24}
+            onPress={handleLogout}
+            style={{ marginRight: 8 }}
+          />
+        ),
+      })}
     >
       <Tab.Screen 
         name="Home" 
         component={HomeScreen}
-        options={{ 
-          title: getUserGreeting(),
-          tabBarLabel: 'Upcoming',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="calendar" size={size} color={color} />
-          ),
-        }}
-        listeners={{
-          focus: loadUser,
-        }}
       />
       <Tab.Screen 
         name="History" 
         component={CaseHistoryScreen}
-        options={{ 
-          title: 'Case History',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="history" size={size} color={color} />
-          ),
-        }}
       />
       <Tab.Screen 
         name="Reports" 
         component={ReportsScreen}
-        options={{ 
-          title: 'Reports',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="chart-bar" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
-        options={{ 
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="account" size={size} color={color} />
-          ),
-        }}
       />
     </Tab.Navigator>
   );
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isOnboarded, setIsOnboarded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [initialRoute, setInitialRoute] = useState('SignUp');
-  const [isInitialized, setIsInitialized] = useState(false);
-  const navigationRef = React.useRef();
+  const navigationRef = React.useRef(null);
 
   useEffect(() => {
-    // Only run once on mount
-    if (!isInitialized) {
-      checkAuthStatus();
-      setIsInitialized(true);
-      
-      // Delay update check to avoid interrupting user input
-      const updateTimer = setTimeout(() => {
-        checkForUpdates();
-      }, 5000); // Increased delay
-      
-      return () => clearTimeout(updateTimer);
-    }
-  }, [isInitialized]);
+    checkAuth();
+    checkForUpdates();
+  }, []);
+
+  // Listen for navigation state changes to check auth
+  useEffect(() => {
+    const unsubscribe = navigationRef.current?.addListener('state', () => {
+      checkAuth();
+    });
+    return unsubscribe;
+  }, []);
 
   const checkForUpdates = async () => {
     try {
-      // Always check for updates, even in dev mode (for standalone builds)
-      if (!Updates.isEnabled) {
-        console.log('📱 Updates not enabled');
+      if (__DEV__) {
+        // Don't check for updates in development
         return;
       }
 
-      // Don't check for updates if user is on signup/login screens
-      // This prevents interrupting user input
-      const currentRoute = navigationRef.current?.getCurrentRoute();
-      const isAuthScreen = currentRoute?.name === 'SignUp' || currentRoute?.name === 'Login';
-      
-      if (isAuthScreen) {
-        console.log('📱 Skipping update check on auth screen');
-        return;
-      }
-
-      console.log('📱 Checking for updates...');
       const update = await Updates.checkForUpdateAsync();
-      
       if (update.isAvailable) {
-        console.log('📱 Update available, fetching...');
         await Updates.fetchUpdateAsync();
-        // Only reload if user is not actively interacting with auth screens
-        const currentRouteAfterFetch = navigationRef.current?.getCurrentRoute();
-        const isStillAuthScreen = currentRouteAfterFetch?.name === 'SignUp' || currentRouteAfterFetch?.name === 'Login';
-        
-        if (!isStillAuthScreen) {
-          console.log('📱 Update fetched, reloading...');
-          await Updates.reloadAsync();
-        } else {
-          console.log('📱 Update fetched but delaying reload (user on auth screen)');
-        }
-      } else {
-        console.log('📱 No updates available');
+        await Updates.reloadAsync();
       }
     } catch (error) {
-      console.error('❌ Error checking for updates:', error);
+      console.error('Error checking for updates:', error);
     }
   };
 
-  const checkAuthStatus = async () => {
+  const checkAuth = async () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       const onboarded = await AsyncStorage.getItem('isOnboarded');
       
-      console.log('App startup check - token:', !!token, 'onboarded:', onboarded);
-      
-      if (token && onboarded === 'true') {
-        console.log('✅ User is authenticated and onboarded, going to MainTabs');
-        setInitialRoute('MainTabs');
-      } else if (token && onboarded !== 'true') {
-        console.log('✅ User is authenticated but not onboarded, going to Onboarding');
-        setInitialRoute('Onboarding');
-      } else {
-        console.log('Starting at SignUp screen');
-        setInitialRoute('SignUp');
+      if (token) {
+        setIsAuthenticated(true);
+        setIsOnboarded(onboarded === 'true');
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
-      setInitialRoute('SignUp');
+      console.error('Error checking auth:', error);
     } finally {
       setIsLoading(false);
     }
@@ -206,64 +226,49 @@ export default function App() {
   return (
     <PaperProvider theme={theme}>
       <NavigationContainer ref={navigationRef}>
-        <Stack.Navigator 
-          initialRouteName={initialRoute}
-          screenOptions={{ headerShown: false }}
-        >
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          <Stack.Screen name="MainTabs" component={MainTabs} />
-          <Stack.Screen 
-            name="NewCase" 
-            component={NewCaseScreen}
-            options={{ 
-              headerShown: true,
-              title: 'New Case',
-              headerStyle: { backgroundColor: theme.colors.primary },
-              headerTintColor: theme.colors.white
-            }}
-          />
-          <Stack.Screen 
-            name="CaseDetails" 
-            component={CaseDetailsScreen}
-            options={{ 
-              headerShown: true,
-              title: 'Case Details',
-              headerStyle: { backgroundColor: theme.colors.primary },
-              headerTintColor: theme.colors.white
-            }}
-          />
-          <Stack.Screen 
-            name="ReferCase" 
-            component={ReferCaseScreen}
-            options={{ 
-              headerShown: true,
-              title: 'Refer Case',
-              headerStyle: { backgroundColor: theme.colors.primary },
-              headerTintColor: theme.colors.white
-            }}
-          />
-          <Stack.Screen 
-            name="Profile" 
-            component={ProfileScreen}
-            options={{ 
-              headerShown: true,
-              title: 'Profile',
-              headerStyle: { backgroundColor: theme.colors.primary },
-              headerTintColor: theme.colors.white
-            }}
-          />
-          <Stack.Screen 
-            name="ResetPIN" 
-            component={ResetPINScreen}
-            options={{ 
-              headerShown: true,
-              title: 'Reset PIN',
-              headerStyle: { backgroundColor: theme.colors.primary },
-              headerTintColor: theme.colors.white
-            }}
-          />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {!isAuthenticated ? (
+            <>
+              <Stack.Screen name="SignUp" component={SignUpScreen} />
+              <Stack.Screen name="Login" component={LoginScreen} />
+            </>
+          ) : !isOnboarded ? (
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          ) : (
+            <>
+              <Stack.Screen name="MainTabs" component={MainTabs} />
+              <Stack.Screen 
+                name="NewCase" 
+                component={NewCaseScreen}
+                options={{ 
+                  headerShown: true,
+                  title: 'New Case',
+                  headerStyle: { backgroundColor: theme.colors.primary },
+                  headerTintColor: theme.colors.white
+                }}
+              />
+              <Stack.Screen 
+                name="CaseDetails" 
+                component={CaseDetailsScreen}
+                options={{ 
+                  headerShown: true,
+                  title: 'Case Details',
+                  headerStyle: { backgroundColor: theme.colors.primary },
+                  headerTintColor: theme.colors.white
+                }}
+              />
+              <Stack.Screen 
+                name="ReferCase" 
+                component={ReferCaseScreen}
+                options={{ 
+                  headerShown: true,
+                  title: 'Refer Case',
+                  headerStyle: { backgroundColor: theme.colors.primary },
+                  headerTintColor: theme.colors.white
+                }}
+              />
+            </>
+          )}
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>

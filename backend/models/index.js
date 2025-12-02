@@ -35,7 +35,6 @@ const db = {
   Procedure: require('./Procedure')(sequelize),
   TeamMember: require('./TeamMember')(sequelize),
   CaseTeamMember: require('./CaseTeamMember')(sequelize),
-  CaseProcedure: require('./CaseProcedure')(sequelize),
   Role: require('./Role')(sequelize),
   Settings: require('./Settings')(sequelize),
   sequelize,
