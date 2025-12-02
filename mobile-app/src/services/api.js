@@ -111,13 +111,25 @@ api.interceptors.response.use(
       });
       
       // Check if it's ngrok browser warning page (usually returns HTML)
-      if (error.response.status === 403 || error.response.status === 200) {
+      if (error.response.status === 403 || (error.response.status === 200 && error.response.data)) {
         const contentType = error.response.headers['content-type'] || '';
-        if (contentType.includes('text/html')) {
-          console.error('⚠️ ngrok browser warning page detected - may need to visit URL in browser first');
-          error.message = 'Server connection issue. Please contact support.';
+        const responseData = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
+        
+        if (contentType.includes('text/html') || responseData.includes('ngrok') || responseData.includes('browser warning')) {
+          console.error('⚠️ ngrok browser warning page detected');
+          console.error('📄 Response preview:', responseData.substring(0, 200));
+          error.message = `Cannot connect to server. Please visit ${apiBaseUrl} in your browser first to bypass ngrok warning, then try again.`;
           error.networkError = true;
+          error.ngrokWarning = true;
         }
+      }
+      
+      // Check for other HTML responses (might be ngrok warning)
+      if (error.response.data && typeof error.response.data === 'string' && error.response.data.includes('<!DOCTYPE html>')) {
+        console.error('⚠️ Received HTML response instead of JSON - likely ngrok warning page');
+        error.message = `Server returned HTML instead of JSON. Please visit ${apiBaseUrl} in your browser first, then try again.`;
+        error.networkError = true;
+        error.ngrokWarning = true;
       }
     }
     
