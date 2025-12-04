@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { User, Case, Referral, Role, TeamMember, Settings } = require('../models');
+const { User, Case, Referral, Role, TeamMember, Settings, Facility, Payer, ActivityLog } = require('../models');
 const { authenticateToken } = require('./auth');
 const { Op } = require('sequelize');
+const { Sequelize } = require('sequelize');
 
 // Admin routes (in production, add admin role check)
 // Temporarily disable auth for local development - add back in production
@@ -14,7 +15,7 @@ const { Op } = require('sequelize');
 router.get('/users', async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: ['id', 'phoneNumber', 'role', 'otherRole', 'lastLoginAt', 'createdAt', 'signupOTP'],
+      attributes: ['id', 'phoneNumber', 'role', 'otherRole', 'prefix', 'preferredName', 'lastLoginAt', 'createdAt', 'signupOTP'],
       order: [['createdAt', 'DESC']]
     });
     res.json({ success: true, users });
@@ -32,6 +33,13 @@ router.get('/dashboard', async (req, res) => {
     const completedCount = await Case.count({ where: { status: 'Completed' } });
     const cancelledCount = await Case.count({ where: { status: 'Cancelled' } });
     const referredCount = await Case.count({ where: { isReferred: true } });
+    const ongoingCount = await Case.count({
+      where: {
+        status: {
+          [Op.in]: ['Upcoming', 'Referred']
+        }
+      }
+    });
     const totalUsers = await User.count();
     const activeUsers = await User.count({
       where: {
@@ -47,6 +55,7 @@ router.get('/dashboard', async (req, res) => {
         completedCases: completedCount,
         cancelledCases: cancelledCount,
         referredCases: referredCount,
+        ongoingCases: ongoingCount,
         totalUsers,
         activeUsers
       }
@@ -72,17 +81,113 @@ router.get('/ongoing-cases', async (req, res) => {
         }
       },
       include: [
-        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role'] },
+        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
         { model: require('../models').Facility, as: 'facility' },
         { model: require('../models').Procedure, as: 'procedure' }
       ],
       order: [['dateOfProcedure', 'ASC']]
     });
 
-    res.json({ success: true, cases });
+    res.json({ success: true, cases: cases || [] });
   } catch (error) {
     console.error('Error fetching ongoing cases:', error);
     res.status(500).json({ error: 'Failed to fetch ongoing cases' });
+  }
+});
+
+/**
+ * Get completed cases
+ */
+router.get('/completed-cases', async (req, res) => {
+  try {
+    const cases = await Case.findAll({
+      where: {
+        status: 'Completed'
+      },
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
+        { model: require('../models').Facility, as: 'facility' },
+        { model: require('../models').Procedure, as: 'procedure' }
+      ],
+      order: [['dateOfProcedure', 'DESC']]
+    });
+
+    console.log(`📊 Found ${cases.length} completed cases`);
+    res.json({ success: true, cases: cases || [] });
+  } catch (error) {
+    console.error('Error fetching completed cases:', error);
+    res.status(500).json({ error: 'Failed to fetch completed cases' });
+  }
+});
+
+/**
+ * Get cancelled cases
+ */
+router.get('/cancelled-cases', async (req, res) => {
+  try {
+    const cases = await Case.findAll({
+      where: {
+        status: 'Cancelled'
+      },
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
+        { model: require('../models').Facility, as: 'facility' },
+        { model: require('../models').Procedure, as: 'procedure' }
+      ],
+      order: [['dateOfProcedure', 'DESC']]
+    });
+
+    console.log(`📊 Found ${cases.length} cancelled cases`);
+    res.json({ success: true, cases: cases || [] });
+  } catch (error) {
+    console.error('Error fetching cancelled cases:', error);
+    res.status(500).json({ error: 'Failed to fetch cancelled cases' });
+  }
+});
+
+/**
+ * Move cases to another user (admin only)
+ */
+router.post('/cases/move', async (req, res) => {
+  try {
+    const { caseIds, targetUserId } = req.body;
+
+    if (!caseIds || !Array.isArray(caseIds) || caseIds.length === 0) {
+      return res.status(400).json({ error: 'Case IDs are required' });
+    }
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'Target user ID is required' });
+    }
+
+    // Verify target user exists
+    const targetUser = await User.findByPk(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Target user not found' });
+    }
+
+    // Update all cases
+    const result = await Case.update(
+      { userId: targetUserId },
+      {
+        where: {
+          id: {
+            [Op.in]: caseIds
+          }
+        }
+      }
+    );
+
+    console.log(`✅ Moved ${result[0]} case(s) to user ${targetUserId}`);
+
+    res.json({
+      success: true,
+      message: `Successfully moved ${result[0]} case(s) to user ${targetUser.phoneNumber}`,
+      movedCount: result[0]
+    });
+  } catch (error) {
+    console.error('Error moving cases:', error);
+    res.status(500).json({ error: 'Failed to move cases' });
   }
 });
 
@@ -96,7 +201,31 @@ router.put('/cases/:id', async (req, res) => {
       return res.status(404).json({ error: 'Case not found' });
     }
 
-    await caseItem.update(req.body);
+    const updateData = { ...req.body };
+    
+    // Handle date conversion
+    if (updateData.dateOfProcedure) {
+      updateData.dateOfProcedure = new Date(updateData.dateOfProcedure);
+    }
+
+    // Handle numeric conversions
+    if (updateData.patientAge) {
+      updateData.patientAge = parseInt(updateData.patientAge);
+    }
+    if (updateData.amount) {
+      updateData.amount = parseFloat(updateData.amount);
+    }
+
+    await caseItem.update(updateData);
+
+    // Reload case with associations
+    const updatedCase = await Case.findByPk(caseItem.id, {
+      include: [
+        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
+        { model: require('../models').Facility, as: 'facility' },
+        { model: require('../models').Procedure, as: 'procedure' }
+      ]
+    });
 
     // Send push notification (implement notification service)
     const user = await User.findByPk(caseItem.userId);
@@ -105,7 +234,7 @@ router.put('/cases/:id', async (req, res) => {
       console.log(`Case ${caseItem.id} updated by admin. Notify user ${user.phoneNumber}`);
     }
 
-    res.json({ success: true, case: caseItem });
+    res.json({ success: true, case: updatedCase });
   } catch (error) {
     console.error('Error updating case:', error);
     res.status(500).json({ error: 'Failed to update case' });
@@ -179,6 +308,51 @@ router.post('/roles/:roleName/team-members', async (req, res) => {
 });
 
 /**
+ * Update team members for a role (used for removing members)
+ */
+router.put('/roles/:roleId/team-members', async (req, res) => {
+  try {
+    const { roleId } = req.params;
+    const { names } = req.body;
+
+    const role = await Role.findByPk(roleId);
+    if (!role) {
+      return res.status(404).json({ error: 'Role not found' });
+    }
+
+    const updatedNames = Array.isArray(names) ? names : [];
+
+    await role.update({ teamMemberNames: updatedNames });
+
+    res.json({ success: true, role });
+  } catch (error) {
+    console.error('Error updating role team members:', error);
+    res.status(500).json({ error: 'Failed to update role team members' });
+  }
+});
+
+/**
+ * Delete a role
+ */
+router.delete('/roles/:roleId', async (req, res) => {
+  try {
+    const { roleId } = req.params;
+    
+    const role = await Role.findByPk(roleId);
+    if (!role) {
+      return res.status(404).json({ error: 'Role not found' });
+    }
+
+    await role.destroy();
+
+    res.json({ success: true, message: 'Role deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting role:', error);
+    res.status(500).json({ error: 'Failed to delete role' });
+  }
+});
+
+/**
  * Get settings
  */
 router.get('/settings', async (req, res) => {
@@ -212,6 +386,311 @@ router.put('/settings/:key', async (req, res) => {
   } catch (error) {
     console.error('Error updating setting:', error);
     res.status(500).json({ error: 'Failed to update setting' });
+  }
+});
+
+/**
+ * Get reports for a specific user (admin)
+ */
+router.get('/reports/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Get date filters from query parameters
+    let startDate = null;
+    let endDate = null;
+    
+    if (req.query.startDate) {
+      // Parse date string (format: YYYY-MM-DD) and create date in local timezone
+      const dateParts = req.query.startDate.split('-');
+      startDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+      startDate.setHours(0, 0, 0, 0); // Start of day
+    }
+    
+    if (req.query.endDate) {
+      // Parse date string (format: YYYY-MM-DD) and create date in local timezone
+      const dateParts = req.query.endDate.split('-');
+      endDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+      endDate.setHours(23, 59, 59, 999); // End of day
+    }
+    
+    // If only one date is provided, use it for both start and end (single day filter)
+    if (startDate && !endDate) {
+      endDate = new Date(startDate);
+      endDate.setHours(23, 59, 59, 999);
+    }
+    if (endDate && !startDate) {
+      startDate = new Date(endDate);
+      startDate.setHours(0, 0, 0, 0);
+    }
+    
+    // If both dates are the same, ensure we capture the entire day
+    if (startDate && endDate) {
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+      if (startDateStr === endDateStr) {
+        // Same day - ensure full day range
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+      }
+    }
+    
+    // Build date filter
+    const dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.dateOfProcedure = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        dateFilter.dateOfProcedure[Op.gte] = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.dateOfProcedure[Op.lte] = end;
+      }
+    }
+
+    // Verify user exists
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Completed cases count
+    const completedCount = await Case.count({
+      where: {
+        userId,
+        status: 'Completed',
+        isReferred: false,
+        ...dateFilter
+      }
+    });
+
+    // Cancelled cases count
+    const cancelledCount = await Case.count({
+      where: {
+        userId,
+        status: 'Cancelled',
+        ...dateFilter
+      }
+    });
+
+    // Referred cases count
+    const referredCount = await Case.count({
+      where: {
+        userId,
+        isReferred: true,
+        ...dateFilter
+      }
+    });
+
+    // Autocompleted cases count
+    const autoCompletedCount = await Case.count({
+      where: {
+        userId,
+        isAutoCompleted: true,
+        ...dateFilter
+      }
+    });
+
+    // Surgeons worked with
+    const surgeonsWorkedWith = await Case.findAll({
+      where: {
+        userId,
+        status: 'Completed',
+        ...dateFilter
+      },
+      include: [
+        {
+          model: TeamMember,
+          as: 'teamMembers',
+          where: {
+            role: 'Surgeon'
+          },
+          through: { attributes: [] },
+          required: false
+        }
+      ]
+    });
+
+    const surgeonCounts = {};
+    surgeonsWorkedWith.forEach(caseItem => {
+      caseItem.teamMembers.forEach(member => {
+        surgeonCounts[member.id] = (surgeonCounts[member.id] || 0) + 1;
+      });
+    });
+
+    const surgeons = await TeamMember.findAll({
+      where: {
+        id: Object.keys(surgeonCounts),
+        role: 'Surgeon'
+      }
+    });
+
+    const surgeonsAnalysis = surgeons.map(surgeon => ({
+      id: surgeon.id,
+      name: surgeon.name,
+      casesCount: surgeonCounts[surgeon.id]
+    }));
+
+    // Total invoiced/uninvoiced amount
+    const invoicedAmount = await Case.sum('amount', {
+      where: {
+        userId,
+        status: 'Completed',
+        invoiceNumber: {
+          [Op.ne]: null
+        },
+        ...dateFilter
+      }
+    }) || 0;
+
+    const uninvoicedAmount = await Case.sum('amount', {
+      where: {
+        userId,
+        status: 'Completed',
+        invoiceNumber: null,
+        ...dateFilter
+      }
+    }) || 0;
+
+    // Facilities analysis
+    const facilitiesAnalysis = await Case.findAll({
+      where: {
+        userId,
+        status: 'Completed',
+        ...dateFilter
+      },
+      include: [
+        {
+          model: Facility,
+          as: 'facility',
+          required: false
+        }
+      ],
+      attributes: [
+        'facilityId',
+        [Sequelize.fn('COUNT', Sequelize.col('Case.id')), 'casesCount'],
+        [Sequelize.fn('SUM', Sequelize.col('Case.amount')), 'totalAmount']
+      ],
+      group: ['facilityId', 'facility.id', 'facility.name'],
+      raw: false
+    });
+
+    const facilities = facilitiesAnalysis.map(item => ({
+      facilityId: item.facilityId,
+      facilityName: item.facility?.name || 'Unknown',
+      casesCount: parseInt(item.get('casesCount') || 0),
+      totalAmount: parseFloat(item.get('totalAmount') || 0)
+    }));
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        otherRole: user.otherRole,
+        prefix: user.prefix,
+        preferredName: user.preferredName
+      },
+      reports: {
+        completedCases: completedCount,
+        cancelledCases: cancelledCount,
+        referredCases: referredCount,
+        autoCompletedCases: autoCompletedCount,
+        surgeonsAnalysis,
+        invoicedAmount: parseFloat(invoicedAmount) || 0,
+        uninvoicedAmount: parseFloat(uninvoicedAmount) || 0,
+        facilitiesAnalysis: facilities
+      }
+    });
+  } catch (error) {
+    console.error('Error generating admin reports:', error);
+    res.status(500).json({ error: 'Failed to generate reports' });
+  }
+});
+
+/**
+ * Get activity logs with optional date filtering
+ */
+router.get('/logs', async (req, res) => {
+  try {
+    const { startDate, endDate, userId, action } = req.query;
+    
+    // Build date filter
+    const dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      
+      if (startDate) {
+        // Parse date string (format: YYYY-MM-DD) and create date in local timezone
+        const dateParts = startDate.split('-');
+        const start = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+        start.setHours(0, 0, 0, 0); // Start of day
+        dateFilter.createdAt[Op.gte] = start;
+      }
+      
+      if (endDate) {
+        // Parse date string (format: YYYY-MM-DD) and create date in local timezone
+        const dateParts = endDate.split('-');
+        const end = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+        end.setHours(23, 59, 59, 999); // End of day
+        dateFilter.createdAt[Op.lte] = end;
+      }
+      
+      // If both dates are the same, ensure we capture the entire day
+      if (startDate && endDate && startDate === endDate) {
+        const dateParts = startDate.split('-');
+        const start = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.createdAt = {
+          [Op.gte]: start,
+          [Op.lte]: end
+        };
+      }
+    }
+    
+    // Build user filter
+    const userFilter = {};
+    if (userId) {
+      userFilter.userId = userId;
+    }
+    
+    // Build action filter
+    const actionFilter = {};
+    if (action) {
+      actionFilter.action = action;
+    }
+    
+    // Combine all filters
+    const whereClause = {
+      ...dateFilter,
+      ...userFilter,
+      ...actionFilter
+    };
+    
+    const logs = await ActivityLog.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'],
+          required: false
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: 1000 // Limit to prevent performance issues
+    });
+    
+    res.json({ success: true, logs });
+  } catch (error) {
+    console.error('Error fetching activity logs:', error);
+    res.status(500).json({ error: 'Failed to fetch activity logs' });
   }
 });
 

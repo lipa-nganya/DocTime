@@ -216,10 +216,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f6eb', // Background to match logo
   },
   card: {
     marginBottom: theme.spacing.md,
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowColor: 'transparent',
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
   },
   header: {
     flexDirection: 'row',

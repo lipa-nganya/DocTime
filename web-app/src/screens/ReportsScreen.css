@@ -1,0 +1,165 @@
+.reports-container {
+  min-height: 100vh;
+  background-color: #f8f6eb;
+}
+
+.reports-filters {
+  background-color: #FFFFFF;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.filters-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #292F36;
+  margin: 0 0 16px 0;
+}
+
+.date-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.date-filter-item {
+  flex: 1;
+  min-width: 200px;
+}
+
+.btn-clear-filters {
+  padding: 12px 24px;
+  background-color: #e0e0e0;
+  color: #292F36;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  height: fit-content;
+}
+
+.btn-clear-filters:hover {
+  background-color: #d0d0d0;
+}
+
+.active-filter-indicator {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #e8f5f4;
+  border: 1px solid #00c4cc;
+  border-radius: 8px;
+}
+
+.filter-text {
+  font-size: 14px;
+  color: #292F36;
+  font-weight: 500;
+}
+
+.reports-scroll {
+  padding: 16px;
+  padding-bottom: 100px;
+}
+
+.report-card {
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #292F36;
+  margin: 0 0 16px 0;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #666666;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #4ECDC4;
+}
+
+.surgeon-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.surgeon-row:last-child {
+  border-bottom: none;
+}
+
+.surgeon-name {
+  font-size: 16px;
+  color: #292F36;
+}
+
+.surgeon-count {
+  font-size: 14px;
+  color: #666666;
+}
+
+.facility-row {
+  margin-top: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.facility-row:last-child {
+  border-bottom: none;
+}
+
+.facility-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #292F36;
+  display: block;
+}
+
+.facility-stats {
+  font-size: 14px;
+  color: #666666;
+  margin-top: 4px;
+  display: block;
+}
+
+.loading-text {
+  text-align: center;
+  color: #666666;
+  padding: 32px;
+}
+
+@media (max-width: 768px) {
+  .reports-scroll {
+    padding: 12px;
+  }
+}
+

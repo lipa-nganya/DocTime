@@ -1,0 +1,111 @@
+.pacman-game-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.pacman-game-container {
+  background: #000;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pacman-game-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  color: #FFFF00;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pacman-title {
+  font-family: 'Roboto', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  color: #FFFF00;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.pacman-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+}
+
+.pacman-score,
+.pacman-level,
+.pacman-high-score {
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFFF00;
+}
+
+.pacman-close {
+  background: transparent;
+  border: 2px solid #FFFF00;
+  color: #FFFF00;
+  font-size: 28px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.pacman-close:hover {
+  background: #FFFF00;
+  color: #000;
+}
+
+.pacman-canvas {
+  border: 3px solid #FFFF00;
+  border-radius: 8px;
+  background: #000;
+  display: block;
+}
+
+.pacman-instructions {
+  margin-top: 15px;
+  text-align: center;
+  color: #FFFF00;
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+}
+
+.pacman-instructions p {
+  margin: 5px 0;
+}
+

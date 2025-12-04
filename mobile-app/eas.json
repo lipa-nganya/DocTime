@@ -44,6 +44,17 @@
       "android": {
         "buildType": "app-bundle"
       }
+    },
+    "web": {
+      "distribution": "internal",
+      "web": {
+        "bundler": "metro"
+      },
+      "env": {
+        "EXPO_PUBLIC_ENV": "production",
+        "EXPO_PUBLIC_API_BASE_URL": "https://homiest-psychopharmacologic-anaya.ngrok-free.dev",
+        "EAS_BUILD_PROFILE": "web"
+      }
     }
   },
   "submit": {

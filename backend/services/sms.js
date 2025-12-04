@@ -30,10 +30,13 @@ function formatPhoneNumber(phone) {
  * Send SMS using Advanta SMS API
  */
 async function sendSMS(phoneNumber, message) {
-  const isLocalDev = (process.env.NODE_ENV !== 'production' || 
-                     process.env.ENVIRONMENT === 'local') &&
-                     process.env.FORCE_LOCAL_SMS !== 'false';
+  // In dev/local mode, disable SMS by default
+  // Only send SMS if explicitly enabled with ENABLE_SMS=true
+  const isLocalDev = process.env.NODE_ENV === 'development' || 
+                     process.env.NODE_ENV !== 'production' ||
+                     process.env.ENVIRONMENT === 'local';
   
+  // Always disable SMS in dev unless explicitly enabled
   if (isLocalDev && process.env.ENABLE_SMS !== 'true') {
     const formattedPhone = formatPhoneNumber(phoneNumber);
     console.log('');
@@ -87,17 +90,37 @@ async function sendSMS(phoneNumber, message) {
     if (response.data && response.data.responses && response.data.responses[0]) {
       const smsResponse = response.data.responses[0];
       
-      if (smsResponse['response-code'] === '200') {
+      // Check for success - response-code can be string '200', number 200, or response-description might be 'Success'
+      const responseCode = smsResponse['response-code'];
+      const responseDescription = smsResponse['response-description'] || smsResponse['response-description'] || '';
+      
+      // Success conditions: response-code is 200 (string or number) OR response-description is 'Success'
+      const isSuccess = responseCode === '200' || 
+                       responseCode === 200 || 
+                       responseDescription.toLowerCase().includes('success') ||
+                       responseDescription.toLowerCase() === 'success';
+      
+      if (isSuccess) {
         console.log(`✅ SMS sent successfully to ${formattedPhone}`);
         return {
           success: true,
-          messageId: smsResponse['messageid'] || 'unknown',
+          messageId: smsResponse['messageid'] || smsResponse.messageid || 'unknown',
           mobile: formattedPhone,
-          networkId: smsResponse['networkid'] || 'unknown'
+          networkId: smsResponse['networkid'] || smsResponse.networkid || 'unknown'
         };
       } else {
-        throw new Error(`SMS API error: ${smsResponse['response-description'] || 'Unknown error'}`);
+        throw new Error(`SMS API error: ${responseDescription || 'Unknown error'}`);
       }
+    }
+    
+    // Also check if response.data itself indicates success
+    if (response.data && (response.data.success || response.data.status === 'success')) {
+      console.log(`✅ SMS sent successfully to ${formattedPhone}`);
+      return {
+        success: true,
+        messageId: response.data.messageId || 'unknown',
+        mobile: formattedPhone
+      };
     }
     
     throw new Error('Unexpected response format from SMS API');
@@ -116,10 +139,13 @@ async function sendSMS(phoneNumber, message) {
  * Send OTP using Advanta SMS API
  */
 async function sendOTP(phoneNumber, otp) {
-  const isLocalDev = (process.env.NODE_ENV !== 'production' || 
-                     process.env.ENVIRONMENT === 'local') &&
-                     process.env.FORCE_LOCAL_SMS !== 'false';
+  // In dev/local mode, disable SMS by default
+  // Only send SMS if explicitly enabled with ENABLE_SMS=true
+  const isLocalDev = process.env.NODE_ENV === 'development' || 
+                     process.env.NODE_ENV !== 'production' ||
+                     process.env.ENVIRONMENT === 'local';
   
+  // Always disable SMS in dev unless explicitly enabled
   if (isLocalDev && process.env.ENABLE_SMS !== 'true') {
     const formattedPhone = formatPhoneNumber(phoneNumber);
     console.log('');

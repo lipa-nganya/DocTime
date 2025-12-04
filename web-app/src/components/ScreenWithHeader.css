@@ -1,0 +1,54 @@
+.screen-with-header {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f6eb;
+}
+
+.screen-header {
+  background-color: #4ECDC4;
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.back-button {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  transition: opacity 0.2s;
+}
+
+.back-button:hover {
+  opacity: 0.8;
+}
+
+.screen-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0;
+  color: white;
+}
+
+.screen-content {
+  flex: 1;
+  padding-bottom: 80px;
+}
+
+@media (max-width: 768px) {
+  .screen-header {
+    padding: 12px 16px;
+  }
+
+  .screen-title {
+    font-size: 16px;
+  }
+}
+

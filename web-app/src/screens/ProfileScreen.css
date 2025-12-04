@@ -1,0 +1,139 @@
+.profile-container {
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.profile-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.profile-title {
+  font-family: 'Roboto', sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0 0 24px 0;
+  color: #1e293b;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.form-input,
+.form-select {
+  font-family: 'Lato', sans-serif;
+  font-size: 16px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  color: #1e293b;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.form-input-disabled {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.form-hint {
+  font-family: 'Lato', sans-serif;
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+}
+
+.error-message {
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+  color: #ef4444;
+  background: #fef2f2;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+}
+
+.success-message {
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+  color: #10b981;
+  background: #f0fdf4;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+}
+
+.btn {
+  font-family: 'Lato', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-primary:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.loading-text {
+  font-family: 'Lato', sans-serif;
+  font-size: 16px;
+  color: #64748b;
+  text-align: center;
+  padding: 40px;
+}
+
+.easter-egg-hint {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px dashed #cbd5e1;
+  text-align: center;
+}
+
+.easter-egg-text {
+  font-family: 'Lato', sans-serif;
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+  font-style: italic;
+}
+

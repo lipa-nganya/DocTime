@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Platform } from 'react-native';
 import { TextInput, Button, Text, Checkbox, IconButton, Snackbar } from 'react-native-paper';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import RNPickerSelect from 'react-native-picker-select';
 import { useNavigation } from '@react-navigation/native';
 import api from '../services/api';
 import { theme } from '../theme';
+import CalendarPicker from '../components/CalendarPicker';
 
 export default function NewCaseScreen({ navigation }) {
   const [dateOfProcedure, setDateOfProcedure] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [patientName, setPatientName] = useState('');
   const [inpatientNumber, setInpatientNumber] = useState('');
   const [patientAge, setPatientAge] = useState('');
   const [facilityId, setFacilityId] = useState('');
   const [payerId, setPayerId] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [procedureId, setProcedureId] = useState('');
+  const [selectedProcedures, setSelectedProcedures] = useState([]);
   const [amount, setAmount] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('Pending');
   const [additionalNotes, setAdditionalNotes] = useState('');
@@ -94,7 +93,7 @@ export default function NewCaseScreen({ navigation }) {
         facilityId: facilityId || null,
         payerId: payerId || null,
         invoiceNumber: invoiceNumber || null,
-        procedureId: procedureId || null,
+        procedureIds: selectedProcedures.length > 0 ? selectedProcedures : null,
         amount: amount ? parseFloat(amount) : null,
         paymentStatus,
         additionalNotes: additionalNotes || null,
@@ -128,7 +127,7 @@ export default function NewCaseScreen({ navigation }) {
         patientName,
         facilityId,
         payerId,
-        procedureId,
+        procedureIds: selectedProcedures,
         teamMemberIds: selectedTeamMembers
       });
       
@@ -146,6 +145,14 @@ export default function NewCaseScreen({ navigation }) {
       setSelectedTeamMembers(selectedTeamMembers.filter(id => id !== memberId));
     } else {
       setSelectedTeamMembers([...selectedTeamMembers, memberId]);
+    }
+  };
+
+  const toggleProcedure = (procedureId) => {
+    if (selectedProcedures.includes(procedureId)) {
+      setSelectedProcedures(selectedProcedures.filter(id => id !== procedureId));
+    } else {
+      setSelectedProcedures([...selectedProcedures, procedureId]);
     }
   };
 
@@ -176,41 +183,19 @@ export default function NewCaseScreen({ navigation }) {
     return procedureName.includes(searchLower);
   });
 
-  // Get selected procedure name for display
-  const getSelectedProcedureName = () => {
-    const selected = procedures.find(p => p.id === procedureId);
-    return selected ? selected.name : 'Select procedure';
-  };
+
 
   return (
     <ScrollView 
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
     >
-      <TextInput
+      <CalendarPicker
         label="Date of Procedure *"
-        value={dateOfProcedure.toLocaleDateString()}
-        mode="outlined"
-        style={styles.input}
-        onFocus={() => setShowDatePicker(true)}
-        editable={false}
-        right={<TextInput.Icon icon="calendar" onPress={() => setShowDatePicker(true)} />}
+        value={dateOfProcedure}
+        onChange={setDateOfProcedure}
+        style={styles.datePickerContainer}
       />
-      {showDatePicker && (
-        <DateTimePicker
-          value={dateOfProcedure}
-          mode="date"
-          display="default"
-          minimumDate={undefined}
-          maximumDate={undefined}
-          onChange={(event, selectedDate) => {
-            setShowDatePicker(false);
-            if (selectedDate) {
-              setDateOfProcedure(selectedDate);
-            }
-          }}
-        />
-      )}
 
       {/* Surgical Team Members - Collapsible Dropdown */}
       <View style={styles.dropdownContainer}>
@@ -237,6 +222,8 @@ export default function NewCaseScreen({ navigation }) {
               mode="outlined"
               style={styles.searchInput}
               left={<TextInput.Icon icon="magnify" />}
+              outlineColor="#00c4cc"
+              activeOutlineColor="#00c4cc"
             />
             <ScrollView style={styles.teamMembersList} nestedScrollEnabled>
               {teamMembers.length === 0 ? (
@@ -284,6 +271,8 @@ export default function NewCaseScreen({ navigation }) {
         onChangeText={setPatientName}
         mode="outlined"
         style={styles.input}
+        outlineColor="#00c4cc"
+        activeOutlineColor="#00c4cc"
       />
       <TextInput
         label="Patient Age"
@@ -292,6 +281,8 @@ export default function NewCaseScreen({ navigation }) {
         keyboardType="number-pad"
         mode="outlined"
         style={styles.input}
+        outlineColor="#00c4cc"
+        activeOutlineColor="#00c4cc"
       />
 
       <Text style={styles.label}>Facility / Hospital</Text>
@@ -326,6 +317,8 @@ export default function NewCaseScreen({ navigation }) {
         onChangeText={setInpatientNumber}
         mode="outlined"
         style={styles.input}
+        outlineColor="#00c4cc"
+        activeOutlineColor="#00c4cc"
       />
 
       <TextInput
@@ -334,16 +327,18 @@ export default function NewCaseScreen({ navigation }) {
         onChangeText={setInvoiceNumber}
         mode="outlined"
         style={styles.input}
+        outlineColor="#00c4cc"
+        activeOutlineColor="#00c4cc"
       />
 
-      {/* Procedure - Collapsible Dropdown with Search */}
+      {/* Procedure - Collapsible Dropdown with Search (Same as Surgical Team Members) */}
       <View style={styles.dropdownContainer}>
         <TouchableOpacity
           style={styles.dropdownHeader}
           onPress={() => setProcedureExpanded(!procedureExpanded)}
         >
           <Text style={styles.dropdownHeaderText}>
-            Procedure {procedureId ? `- ${getSelectedProcedureName()}` : ''}
+            Procedure {selectedProcedures.length > 0 && `(${selectedProcedures.length})`}
           </Text>
           <IconButton
             icon={procedureExpanded ? 'chevron-up' : 'chevron-down'}
@@ -361,12 +356,10 @@ export default function NewCaseScreen({ navigation }) {
               mode="outlined"
               style={styles.searchInput}
               left={<TextInput.Icon icon="magnify" />}
+              outlineColor="#00c4cc"
+              activeOutlineColor="#00c4cc"
             />
-            <ScrollView 
-              style={styles.procedureList} 
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-            >
+            <ScrollView style={styles.teamMembersList} nestedScrollEnabled>
               {procedures.length === 0 ? (
                 <Text style={styles.noResultsText}>No procedures available. Add procedures in the admin app.</Text>
               ) : filteredProcedures.length === 0 ? (
@@ -377,26 +370,31 @@ export default function NewCaseScreen({ navigation }) {
                 filteredProcedures.map((procedure) => (
                   <TouchableOpacity
                     key={procedure.id}
-                    style={[
-                      styles.procedureItem,
-                      procedureId === procedure.id && styles.procedureItemSelected
-                    ]}
-                    onPress={() => {
-                      setProcedureId(procedure.id);
-                      setProcedureExpanded(false);
-                      setProcedureSearchQuery('');
-                    }}
+                    style={styles.checkboxRow}
+                    onPress={() => toggleProcedure(procedure.id)}
                   >
-                    <Text style={[
-                      styles.procedureItemText,
-                      procedureId === procedure.id && styles.procedureItemTextSelected
-                    ]}>
+                    <Checkbox
+                      status={selectedProcedures.includes(procedure.id) ? 'checked' : 'unchecked'}
+                      onPress={() => toggleProcedure(procedure.id)}
+                    />
+                    <Text style={styles.checkboxLabel}>
                       {procedure.name}
                     </Text>
                   </TouchableOpacity>
                 ))
               )}
             </ScrollView>
+            {selectedProcedures.length > 0 && (
+              <View style={styles.selectedMembersContainer}>
+                <Text style={styles.selectedMembersLabel}>Selected:</Text>
+                <Text style={styles.selectedMembersText}>
+                  {procedures
+                    .filter(p => selectedProcedures.includes(p.id))
+                    .map(p => p.name)
+                    .join(', ')}
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -408,6 +406,8 @@ export default function NewCaseScreen({ navigation }) {
         keyboardType="decimal-pad"
         mode="outlined"
         style={styles.input}
+        outlineColor="#00c4cc"
+        activeOutlineColor="#00c4cc"
       />
 
       <Text style={styles.label}>Payment Status</Text>
@@ -432,6 +432,8 @@ export default function NewCaseScreen({ navigation }) {
         multiline
         numberOfLines={4}
         style={styles.input}
+        outlineColor="#00c4cc"
+        activeOutlineColor="#00c4cc"
       />
 
       <Button
@@ -439,6 +441,7 @@ export default function NewCaseScreen({ navigation }) {
         onPress={handleCreateCase}
         loading={loading}
         style={styles.button}
+        textColor={theme.colors.buttonText}
       >
         Create Case
       </Button>
@@ -459,14 +462,16 @@ export default function NewCaseScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f6eb', // Background to match logo
   },
   scrollContent: {
     padding: theme.spacing.md,
     paddingBottom: theme.spacing.xl * 2,
+    paddingHorizontal: theme.spacing.lg,
   },
   input: {
     marginBottom: theme.spacing.md,
+    marginHorizontal: theme.spacing.sm,
   },
   sectionTitle: {
     fontSize: 16,
@@ -488,10 +493,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
+    marginHorizontal: theme.spacing.sm,
   },
   button: {
     marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.md,
+    marginHorizontal: theme.spacing.sm,
     backgroundColor: theme.colors.primary,
   },
   bottomSpacer: {
@@ -499,20 +506,26 @@ const styles = StyleSheet.create({
   },
   snackbar: {
     marginBottom: 50,
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowColor: 'transparent',
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
   },
   dropdownContainer: {
     marginBottom: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    marginHorizontal: theme.spacing.sm,
+    borderWidth: 0,
     borderRadius: theme.borderRadius.md,
     overflow: 'hidden',
+    backgroundColor: '#f8f6eb', // Background to match logo
   },
   dropdownHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f6eb', // Background to match logo
   },
   dropdownHeaderText: {
     fontSize: 16,
@@ -526,33 +539,11 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     marginBottom: theme.spacing.sm,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f6eb', // Background to match logo
   },
   teamMembersList: {
     maxHeight: 200,
     marginBottom: theme.spacing.sm,
-  },
-  procedureList: {
-    maxHeight: 250,
-    marginBottom: theme.spacing.sm,
-    backgroundColor: theme.colors.background,
-  },
-  procedureItem: {
-    padding: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    backgroundColor: theme.colors.background,
-  },
-  procedureItemSelected: {
-    backgroundColor: theme.colors.primary + '20',
-  },
-  procedureItemText: {
-    fontSize: 14,
-    color: theme.colors.text,
-  },
-  procedureItemTextSelected: {
-    fontWeight: '600',
-    color: theme.colors.primary,
   },
   noResultsText: {
     textAlign: 'center',
@@ -566,11 +557,12 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     padding: theme.spacing.sm,
     marginBottom: theme.spacing.md,
+    marginHorizontal: theme.spacing.sm,
   },
   selectedMembersContainer: {
     marginTop: theme.spacing.sm,
     padding: theme.spacing.sm,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f6eb', // Background to match logo
     borderRadius: theme.borderRadius.sm,
   },
   selectedMembersLabel: {
@@ -583,6 +575,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.text,
   },
+  datePickerContainer: {
+    marginLeft: theme.spacing.md,
+  },
 });
 
 const pickerSelectStyles = {
@@ -590,23 +585,25 @@ const pickerSelectStyles = {
     fontSize: 16,
     paddingVertical: 12,
     paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    borderWidth: 0,
     borderRadius: 4,
     color: theme.colors.text,
     paddingRight: 30,
     marginBottom: theme.spacing.md,
+    marginHorizontal: theme.spacing.sm,
+    backgroundColor: 'transparent',
   },
   inputAndroid: {
     fontSize: 16,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    borderWidth: 0,
     borderRadius: 4,
     color: theme.colors.text,
     paddingRight: 30,
     marginBottom: theme.spacing.md,
+    marginHorizontal: theme.spacing.sm,
+    backgroundColor: 'transparent',
   },
 };
 

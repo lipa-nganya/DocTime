@@ -1,113 +1,193 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { TextInput, Button, Text, ActivityIndicator } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Image, Platform } from 'react-native';
+import { TextInput, Button, Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { theme } from '../theme';
+import OTPInput from '../components/OTPInput';
 
 export default function SignUpScreen() {
   const navigation = useNavigation();
+  const { signup } = useAuth();
+  
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [step, setStep] = useState('phone'); // 'phone', 'otp', 'pin'
   const [loading, setLoading] = useState(false);
-  const [requestingOTP, setRequestingOTP] = useState(false);
+  const [error, setError] = useState('');
+
+  const formatPhoneNumber = (phone) => {
+    // Format phone number - ensure it's exactly 12 digits (254 + 9 digits)
+    let formatted = phone.replace(/[\s\-\(\)]/g, '').replace(/\D/g, '');
+    
+    // Remove leading 0 if present
+    if (formatted.startsWith('0')) {
+      formatted = formatted.substring(1);
+    }
+    
+    // Remove 254 prefix if present, then add it back
+    if (formatted.startsWith('254')) {
+      formatted = formatted.substring(3);
+    }
+    
+    // Ensure we have exactly 9 digits, then add 254 prefix
+    if (formatted.length > 9) {
+      formatted = formatted.substring(0, 9);
+    }
+    
+    return '254' + formatted;
+  };
+
+  const showError = (message) => {
+    setError(message);
+    if (Platform.OS === 'web') {
+      window.alert(message);
+    } else {
+      // For native, you could use Alert.alert here
+      window.alert(message);
+    }
+  };
 
   const handleRequestOTP = async () => {
-    if (!phoneNumber) {
-      Alert.alert('Error', 'Please enter your phone number');
+    if (!phoneNumber.trim()) {
+      showError('Please enter your phone number');
       return;
     }
 
-    // Prevent double-clicking
-    if (requestingOTP || loading) {
-      return;
-    }
-
-    setRequestingOTP(true);
+    if (loading) return;
+    
+    setError('');
     setLoading(true);
+
     try {
-      console.log('📱 Requesting OTP for:', phoneNumber);
-      console.log('📱 API Base URL:', api.defaults.baseURL);
       const response = await api.post('/auth/request-otp', { phoneNumber });
-      console.log('✅ OTP Response:', response.data);
       
-      // Automatically redirect to OTP screen
+      setOtpDigits(['', '', '', '']);
       setStep('otp');
       
-      // In dev mode, show OTP if provided
-      if (response.data.otp) {
-        Alert.alert('OTP Sent', `Your OTP is: ${response.data.otp}\n\n(This is shown in development mode)`);
-      } else {
-        Alert.alert('Success', 'OTP sent to your phone');
+      if (response.data.otp && Platform.OS === 'web') {
+        window.alert(`Your OTP is: ${response.data.otp}\n\n(This is shown in development mode)`);
       }
     } catch (error) {
-      console.error('❌ OTP Error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url,
-        baseURL: error.config?.baseURL
-      });
-      Alert.alert(
-        'Error', 
-        error.response?.data?.error || error.message || 'Failed to send OTP. Please check your internet connection.'
-      );
+      showError(error.response?.data?.error || error.message || 'Failed to send OTP');
     } finally {
       setLoading(false);
-      setRequestingOTP(false);
     }
   };
 
   const handleVerifyOTP = async () => {
-    if (!otp || otp.length !== 4) {
-      Alert.alert('Error', 'Please enter a valid 4-digit OTP');
+    const otp = otpDigits.join('');
+    if (otp.length !== 4) {
+      showError('Please enter a valid 4-digit OTP');
       return;
     }
 
-    setStep('pin');
-  };
-
-  const handleSignUp = async () => {
-    if (!pin || pin.length < 4) {
-      Alert.alert('Error', 'PIN must be at least 4 digits');
-      return;
-    }
-
-    if (pin !== confirmPin) {
-      Alert.alert('Error', 'PINs do not match');
-      return;
-    }
-
+    if (loading) return;
+    
+    setError('');
     setLoading(true);
+
     try {
-      const response = await api.post('/auth/signup', {
-        phoneNumber,
-        otp,
-        pin,
-        role: 'Surgeon', // Will be set in onboarding
-        otherRole: null
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+      const response = await api.post('/auth/verify-otp', {
+        phoneNumber: formattedPhone,
+        otp
       });
 
-      await AsyncStorage.setItem('authToken', response.data.token);
-      await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
-      setStep('onboarding');
-      navigation.navigate('Onboarding');
+      if (response.data.success) {
+        setStep('pin');
+      }
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'Failed to sign up');
+      showError(error.response?.data?.error || error.message || 'Invalid OTP');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleOTPComplete = (otpValue) => {
+    if (otpValue && otpValue.length === 4) {
+      handleVerifyOTP();
+    }
+  };
+
+  const handleSignUp = async () => {
+    console.log('🔘 Sign Up button clicked');
+    console.log('📝 Form state:', {
+      phoneNumber,
+      otp: otpDigits.join(''),
+      pinLength: pin.length,
+      confirmPinLength: confirmPin.length,
+      step
+    });
+
+    if (!pin || pin.length < 4) {
+      console.log('❌ PIN validation failed: too short');
+      showError('PIN must be at least 4 digits');
+      return;
+    }
+
+    if (pin !== confirmPin) {
+      console.log('❌ PIN validation failed: pins do not match');
+      showError('PINs do not match');
+      return;
+    }
+
+    if (loading) {
+      console.log('⏸️ Already loading, ignoring click');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+
+    try {
+      console.log('🔄 Starting signup process...');
+      const otp = otpDigits.join('');
+      console.log('📤 Calling signup with:', { phoneNumber, otpLength: otp.length, pinLength: pin.length });
+      
+      await signup(phoneNumber, otp, pin);
+      
+      console.log('✅ Signup successful, redirecting...');
+      console.log('🧭 Navigation state:', { isAuthenticated: true, isOnboarded: false });
+      
+      // On web, force a full page reload to ensure App.js picks up the new auth state
+      if (Platform.OS === 'web') {
+        console.log('🌐 Web platform: forcing page reload...');
+        // Use window.location.reload() instead of href for immediate reload
+        window.location.reload();
+      } else {
+        // On native, navigation will be handled by App.js based on auth state
+        // The state update in AuthContext should trigger a re-render
+        console.log('📱 Native platform: navigation handled by App.js');
+      }
+    } catch (error) {
+      console.error('❌ Signup error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to sign up';
+      showError(errorMessage);
+      setLoading(false);
+    }
+  };
+
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Doc Time</Text>
-      <Text style={styles.subtitle}>Sign Up</Text>
+      <Image 
+        source={require('../../assets/logo.png')} 
+        style={styles.logo}
+        resizeMode="contain"
+      />
+
+      {error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : null}
 
       {step === 'phone' && (
         <>
@@ -119,12 +199,17 @@ export default function SignUpScreen() {
             mode="outlined"
             style={styles.input}
             placeholder="0712345678"
+            outlineColor="#00c4cc"
+            activeOutlineColor="#00c4cc"
+            autoFocus
           />
           <Button
             mode="contained"
             onPress={handleRequestOTP}
             loading={loading}
+            disabled={loading}
             style={styles.button}
+            textColor={theme.colors.buttonText}
           >
             Send OTP
           </Button>
@@ -132,6 +217,7 @@ export default function SignUpScreen() {
             mode="text"
             onPress={() => navigation.navigate('Login')}
             style={styles.linkButton}
+            textColor={theme.colors.outlinedButtonText}
           >
             Already have an account? Login
           </Button>
@@ -140,26 +226,32 @@ export default function SignUpScreen() {
 
       {step === 'otp' && (
         <>
-          <TextInput
-            label="Enter OTP (4 digits)"
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType="number-pad"
-            mode="outlined"
-            style={styles.input}
-            maxLength={4}
+          <Text style={styles.instruction}>
+            Enter the 4-digit code sent to {phoneNumber}
+          </Text>
+          <OTPInput
+            value={otpDigits}
+            onChange={setOtpDigits}
+            onComplete={handleOTPComplete}
           />
           <Button
             mode="contained"
             onPress={handleVerifyOTP}
+            loading={loading}
+            disabled={loading}
             style={styles.button}
+            textColor={theme.colors.buttonText}
           >
             Verify OTP
           </Button>
           <Button
             mode="text"
-            onPress={() => setStep('phone')}
+            onPress={() => {
+              setStep('phone');
+              setOtpDigits(['', '', '', '']);
+            }}
             style={styles.linkButton}
+            textColor={theme.colors.outlinedButtonText}
           >
             Resend OTP
           </Button>
@@ -175,9 +267,11 @@ export default function SignUpScreen() {
             keyboardType="number-pad"
             mode="outlined"
             style={styles.input}
-            textColor={theme.colors.text}
             secureTextEntry
             maxLength={6}
+            outlineColor="#00c4cc"
+            activeOutlineColor="#00c4cc"
+            autoFocus
           />
           <TextInput
             label="Confirm PIN"
@@ -186,17 +280,21 @@ export default function SignUpScreen() {
             keyboardType="number-pad"
             mode="outlined"
             style={styles.input}
-            textColor={theme.colors.text}
             secureTextEntry
             maxLength={6}
+            outlineColor="#00c4cc"
+            activeOutlineColor="#00c4cc"
           />
           <Button
             mode="contained"
             onPress={handleSignUp}
             loading={loading}
+            disabled={loading}
             style={styles.button}
+            contentStyle={styles.buttonContent}
+            textColor={theme.colors.buttonText}
           >
-            Sign Up
+            Continue
           </Button>
         </>
       )}
@@ -209,19 +307,12 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f6eb',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
+  logo: {
+    width: 150,
+    height: 150,
+    alignSelf: 'center',
     marginBottom: theme.spacing.xl,
   },
   input: {
@@ -229,10 +320,20 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
   },
   linkButton: {
     marginTop: theme.spacing.md,
   },
+  instruction: {
+    textAlign: 'center',
+    marginBottom: theme.spacing.lg,
+    fontSize: 16,
+    color: theme.colors.text,
+  },
+  errorText: {
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
 });
-

@@ -12,19 +12,21 @@ module.exports = (sequelize) => {
       allowNull: false,
       unique: true,
       validate: {
-        is: /^254\d{9}$/
+        is: /^254\d{9,10}$/ // Allow 9-10 digits after 254 to handle edge cases
       }
     },
     pinHash: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true, // Allow null for users in signup process (before PIN is set)
+      comment: 'Hashed PIN. Null for users who haven\'t completed signup yet.'
     },
     role: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Allow null for users who haven't completed onboarding
       validate: {
         isIn: [['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other']]
-      }
+      },
+      comment: 'User role. Null until set during onboarding.'
     },
     otherRole: {
       type: DataTypes.STRING,

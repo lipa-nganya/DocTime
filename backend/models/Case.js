@@ -80,7 +80,7 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 'Upcoming',
       validate: {
-        isIn: [['Upcoming', 'Completed', 'Cancelled', 'Referred']]
+        isIn: [['Upcoming', 'Completed', 'Cancelled', 'Referred', 'Invoiced', 'Paid']]
       }
     },
     isReferred: {
@@ -117,7 +117,12 @@ module.exports = (sequelize) => {
     Case.belongsTo(models.User, { foreignKey: 'referredToId', as: 'referredTo' });
     Case.belongsTo(models.Facility, { foreignKey: 'facilityId', as: 'facility' });
     Case.belongsTo(models.Payer, { foreignKey: 'payerId', as: 'payer' });
-    Case.belongsTo(models.Procedure, { foreignKey: 'procedureId', as: 'procedure' });
+    Case.belongsTo(models.Procedure, { foreignKey: 'procedureId', as: 'procedure' }); // Keep for backward compatibility
+    Case.belongsToMany(models.Procedure, {
+      through: models.CaseProcedure,
+      foreignKey: 'caseId',
+      as: 'procedures'
+    });
     Case.belongsToMany(models.TeamMember, {
       through: models.CaseTeamMember,
       foreignKey: 'caseId',

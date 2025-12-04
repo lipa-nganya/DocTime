@@ -1,0 +1,37 @@
+.otp-input-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 12px;
+}
+
+.otp-input {
+  width: 60px;
+  height: 60px;
+  border: 2px solid #00c4cc;
+  border-radius: 8px;
+  font-size: 24px;
+  font-weight: bold;
+  background-color: #FFFFFF;
+  color: #292F36;
+  text-align: center;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.otp-input:focus {
+  border-color: #4ECDC4;
+  box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+}
+
+@media (max-width: 768px) {
+  .otp-input {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+}
+

@@ -1,0 +1,39 @@
+.calendar-picker-container {
+  margin-bottom: 16px;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.calendar-picker-label {
+  display: block;
+  font-size: 12px;
+  color: #00c4cc;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.calendar-picker-input {
+  width: 100%;
+  max-width: 300px;
+  padding: 16px;
+  font-size: 16px;
+  border: 2px solid #00c4cc;
+  border-radius: 4px;
+  background-color: #FFFFFF;
+  color: #292F36;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.calendar-picker-input:focus {
+  border-color: #4ECDC4;
+  box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+}
+
+@media (max-width: 768px) {
+  .calendar-picker-input {
+    max-width: 100%;
+  }
+}
+

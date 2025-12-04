@@ -1,103 +1,65 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import * as LocalAuthentication from 'expo-local-authentication';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme';
+import { Platform } from 'react-native';
 
 export default function LoginScreen() {
   const navigation = useNavigation();
+  const { login } = useAuth();
+  
   const [phoneNumber, setPhoneNumber] = useState('');
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const showError = (message) => {
+    setError(message);
+    if (Platform.OS === 'web') {
+      window.alert(message);
+    } else {
+      window.alert(message);
+    }
+  };
 
   const handleLogin = async () => {
-    if (!phoneNumber || !pin) {
-      Alert.alert('Error', 'Please enter phone number and PIN');
+    if (!phoneNumber.trim() || !pin.trim()) {
+      showError('Please enter phone number and PIN');
       return;
     }
 
+    if (loading) return;
+
+    setError('');
     setLoading(true);
+
     try {
-      const response = await api.post('/auth/login', { phoneNumber, pin });
+      const result = await login(phoneNumber, pin);
       
-      await AsyncStorage.setItem('authToken', response.data.token);
-      // Store full user object including prefix and preferredName
-      await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      const isOnboarded = await AsyncStorage.getItem('isOnboarded');
-      if (isOnboarded === 'true') {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' }],
-        });
-      } else {
-        navigation.navigate('Onboarding');
+      // Navigation will be handled by App.js based on auth state
+      if (Platform.OS === 'web') {
+        window.location.href = '/';
       }
     } catch (error) {
-      console.error('Login error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        networkError: error.networkError,
-        apiBaseUrl: error.apiBaseUrl,
-        code: error.code
-      });
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to login';
-      Alert.alert('Error', errorMessage);
+      showError(error.response?.data?.error || error.message || 'Failed to login');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBiometricLogin = async () => {
-    try {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-      if (!hasHardware || !isEnrolled) {
-        Alert.alert('Error', 'Biometric authentication not available');
-        return;
-      }
-
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Authenticate to login',
-        cancelLabel: 'Cancel',
-      });
-
-      if (result.success) {
-        // Get stored token and verify
-        const token = await AsyncStorage.getItem('authToken');
-        if (token) {
-          try {
-            const response = await api.post('/auth/verify-token', { token });
-            const isOnboarded = await AsyncStorage.getItem('isOnboarded');
-            if (isOnboarded === 'true') {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'MainTabs' }],
-              });
-            } else {
-              navigation.navigate('Onboarding');
-            }
-          } catch (error) {
-            Alert.alert('Error', 'Session expired. Please login again.');
-          }
-        } else {
-          Alert.alert('Error', 'Please login with PIN first');
-        }
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Biometric authentication failed');
-    }
-  };
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Doc Time</Text>
-      <Text style={styles.subtitle}>Login</Text>
+      <Image 
+        source={require('../../assets/logo.png')} 
+        style={styles.logo}
+        resizeMode="contain"
+      />
+      
+      {error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : null}
 
       <TextInput
         label="Phone Number"
@@ -107,6 +69,9 @@ export default function LoginScreen() {
         mode="outlined"
         style={styles.input}
         placeholder="0712345678"
+        outlineColor="#00c4cc"
+        activeOutlineColor="#00c4cc"
+        autoFocus
       />
       <TextInput
         label="PIN"
@@ -117,26 +82,24 @@ export default function LoginScreen() {
         style={styles.input}
         secureTextEntry
         maxLength={6}
+        outlineColor="#00c4cc"
+        activeOutlineColor="#00c4cc"
       />
       <Button
         mode="contained"
         onPress={handleLogin}
         loading={loading}
+        disabled={loading}
         style={styles.button}
+        textColor={theme.colors.buttonText}
       >
         Login
-      </Button>
-      <Button
-        mode="outlined"
-        onPress={handleBiometricLogin}
-        style={styles.button}
-      >
-        Use Biometrics
       </Button>
       <Button
         mode="text"
         onPress={() => navigation.navigate('SignUp')}
         style={styles.linkButton}
+        textColor={theme.colors.outlinedButtonText}
       >
         Don't have an account? Sign Up
       </Button>
@@ -149,19 +112,12 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f6eb',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
+  logo: {
+    width: 150,
+    height: 150,
+    alignSelf: 'center',
     marginBottom: theme.spacing.xl,
   },
   input: {
@@ -169,9 +125,14 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
   },
   linkButton: {
     marginTop: theme.spacing.md,
   },
+  errorText: {
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
 });
-

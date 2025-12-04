@@ -1,0 +1,204 @@
+.case-details-container {
+  padding: 16px;
+  background-color: #f8f6eb;
+}
+
+.case-details-card {
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 600px;
+  margin: 0 auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.case-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.patient-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #292F36;
+  margin: 0;
+  flex: 1;
+}
+
+.menu-container {
+  position: relative;
+}
+
+.menu-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #292F36;
+  cursor: pointer;
+  padding: 8px;
+  line-height: 1;
+}
+
+.menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background-color: #FFFFFF;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  min-width: 150px;
+  margin-top: 8px;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #292F36;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #f0f0f0;
+}
+
+.menu-item.delete {
+  color: #FF6B6B;
+}
+
+.case-details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #666666;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 16px;
+  color: #292F36;
+}
+
+.badge {
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-top: 8px;
+  align-self: flex-start;
+}
+
+.referral-badge {
+  background-color: #FF6B6B;
+  color: white;
+}
+
+.auto-complete-badge {
+  background-color: #666666;
+  color: white;
+}
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dialog-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #292F36;
+  margin: 0 0 16px 0;
+}
+
+.dialog-content {
+  font-size: 14px;
+  color: #666666;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-secondary {
+  background-color: #e0e0e0;
+  color: #292F36;
+}
+
+.btn-secondary:hover {
+  background-color: #d0d0d0;
+}
+
+.btn-danger {
+  background-color: #FF6B6B;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #e55a5a;
+}
+
+.loading-text {
+  text-align: center;
+  color: #666666;
+  padding: 32px;
+}
+
+@media (max-width: 768px) {
+  .case-details-container {
+    padding: 12px;
+  }
+}
+

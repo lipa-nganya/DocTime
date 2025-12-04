@@ -2,17 +2,23 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-// Get API base URL from build config or environment
-let apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl;
+// FORCE ngrok URL - always use ngrok for API calls
+// This ensures OTA updates work correctly regardless of build config
+const NGROK_URL = 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
 
-// If not in config, try environment variable
-if (!apiBaseUrl) {
-  apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+// Get API base URL from build config or environment (for reference only)
+let configApiUrl = Constants.expoConfig?.extra?.apiBaseUrl;
+if (!configApiUrl) {
+  configApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
 }
 
-// Fallback to ngrok URL for local-dev
-if (!apiBaseUrl || apiBaseUrl === 'http://localhost:5001' || apiBaseUrl.includes('localhost')) {
-  apiBaseUrl = 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
+// ALWAYS use ngrok URL - override any build config
+// This is necessary because OTA updates can't change Constants.expoConfig values
+let apiBaseUrl = NGROK_URL;
+
+// Log what we're using vs what was in config (for debugging)
+if (configApiUrl && configApiUrl !== NGROK_URL) {
+  console.log('⚠️ Overriding build config API URL:', configApiUrl, '→', NGROK_URL);
 }
 
 console.log('🔧 API Base URL:', apiBaseUrl);
@@ -24,13 +30,26 @@ const api = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'ngrok-skip-browser-warning': 'true', // Skip ngrok browser warning
-    'User-Agent': 'DocTime-Mobile-App', // Custom user agent
   },
   timeout: 30000, // 30 second timeout
   validateStatus: function (status) {
-    // Accept status codes less than 500
-    return status < 500;
+    // Only accept 2xx status codes as success
+    return status >= 200 && status < 300;
   },
+  // Don't transform response data automatically - handle it manually
+  transformResponse: [(data) => {
+    // If data is empty or undefined, return null
+    if (!data || data === '') {
+      return null;
+    }
+    // Try to parse JSON, but handle errors gracefully
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      // If it's not JSON (e.g., HTML from ngrok), return the raw data
+      return data;
+    }
+  }],
 });
 
 // Add token to requests
@@ -42,7 +61,10 @@ api.interceptors.request.use(
     }
     // Ensure ngrok headers are always present
     config.headers['ngrok-skip-browser-warning'] = 'true';
-    config.headers['User-Agent'] = 'DocTime-Mobile-App';
+    // Don't set User-Agent on web (browser blocks it)
+    if (typeof navigator === 'undefined' || !navigator.userAgent.includes('Mozilla')) {
+      config.headers['User-Agent'] = 'DocTime-Mobile-App';
+    }
     
     // Log request for debugging
     console.log('📤 API Request:', {
@@ -104,33 +126,62 @@ api.interceptors.response.use(
       error.apiBaseUrl = apiBaseUrl;
     } else {
       // Handle HTTP errors (response received but with error status)
+      const status = error.response?.status;
+      const contentType = error.response?.headers?.['content-type'] || '';
+      let responseData = error.response?.data;
+      
       console.error('❌ HTTP Error:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
+        status: status,
+        statusText: error.response?.statusText,
         url: error.config?.url,
-        data: error.response.data
+        contentType: contentType,
+        hasData: !!responseData
       });
       
-      // Check if it's ngrok browser warning page (usually returns HTML)
-      if (error.response.status === 403 || (error.response.status === 200 && error.response.data)) {
-        const contentType = error.response.headers['content-type'] || '';
-        const responseData = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
+      // Handle 403 errors (likely ngrok browser warning)
+      if (status === 403) {
+        // Try to get response data as string if it exists
+        let dataString = '';
+        try {
+          if (typeof responseData === 'string') {
+            dataString = responseData;
+          } else if (responseData) {
+            dataString = JSON.stringify(responseData);
+          }
+        } catch (e) {
+          // If parsing fails, it's likely HTML
+          dataString = String(responseData || '');
+        }
         
-        if (contentType.includes('text/html') || responseData.includes('ngrok') || responseData.includes('browser warning')) {
-          console.error('⚠️ ngrok browser warning page detected');
-          console.error('📄 Response preview:', responseData.substring(0, 200));
-          error.message = `Cannot connect to server. Please visit ${apiBaseUrl} in your browser first to bypass ngrok warning, then try again.`;
+        // Check if it's HTML (ngrok warning page)
+        if (contentType.includes('text/html') || 
+            dataString.includes('ngrok') || 
+            dataString.includes('browser warning') ||
+            dataString.includes('<!DOCTYPE') ||
+            dataString.includes('<html')) {
+          console.error('⚠️ ngrok browser warning page detected (403)');
+          error.message = `Cannot connect to server (403). This is likely due to ngrok's browser warning.\n\nPlease:\n1. Open ${apiBaseUrl} in a new browser tab\n2. Click "Visit Site" to bypass the warning\n3. Come back here and try again`;
           error.networkError = true;
           error.ngrokWarning = true;
+        } else {
+          // Regular 403 error
+          error.message = error.response?.data?.error || 'Access forbidden (403). Please check your permissions.';
         }
-      }
-      
-      // Check for other HTML responses (might be ngrok warning)
-      if (error.response.data && typeof error.response.data === 'string' && error.response.data.includes('<!DOCTYPE html>')) {
-        console.error('⚠️ Received HTML response instead of JSON - likely ngrok warning page');
-        error.message = `Server returned HTML instead of JSON. Please visit ${apiBaseUrl} in your browser first, then try again.`;
-        error.networkError = true;
-        error.ngrokWarning = true;
+      } else if (status === 401) {
+        // Handle auth errors separately
+        error.message = 'Unauthorized. Please log in again.';
+      } else {
+        // Other HTTP errors
+        try {
+          if (error.response?.data?.error) {
+            error.message = error.response.data.error;
+          } else if (typeof error.response?.data === 'string') {
+            error.message = error.response.data;
+          }
+        } catch (e) {
+          // If we can't parse the error, use a generic message
+          error.message = `Server error (${status}). Please try again.`;
+        }
       }
     }
     

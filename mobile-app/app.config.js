@@ -12,7 +12,7 @@ module.exports = ({ config }) => {
   // Note: localhost only works in emulator, not on physical devices
   const ngrokUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.NGROK_URL || 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev';
   const localApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || ngrokUrl;
-  const cloudApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://your-backend-url.run.app'; // Update with actual backend URL
+  const cloudApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || ngrokUrl; // Use ngrok URL for now
   
   // Choose API URL based on environment
   // For local-dev, always use ngrok URL (localhost doesn't work on physical devices)
@@ -70,8 +70,8 @@ module.exports = ({ config }) => {
         supportsTablet: true,
         bundleIdentifier: bundleIdentifier,
         infoPlist: {
-          NSContactsUsageDescription: 'This app needs access to your contacts to refer cases to other doctors.',
-          NSFaceIDUsageDescription: 'This app uses Face ID to securely authenticate you.'
+          NSContactsUsageDescription: 'This app needs access to your contacts to refer cases to other doctors.'
+          // Face ID permission removed - biometrics commented out
         }
       },
       android: {
@@ -85,21 +85,45 @@ module.exports = ({ config }) => {
           'ACCESS_NETWORK_STATE',
           'READ_CONTACTS',
           'SEND_SMS',
-          'RECEIVE_SMS',
-          'USE_BIOMETRIC',
-          'USE_FINGERPRINT'
+          'RECEIVE_SMS'
+          // Biometric permissions removed - biometrics commented out
         ]
       },
       web: {
-        favicon: './assets/favicon.png'
+        favicon: './assets/favicon.png',
+        name: 'Doc Time',
+        shortName: 'DocTime',
+        lang: 'en',
+        scope: '/',
+        themeColor: '#4ECDC4',
+        backgroundColor: '#F8F9FA',
+        display: 'standalone',
+        orientation: 'portrait',
+        startUrl: '/',
+        description: 'Doc Time - Medical case management app for doctors',
+        apple: {
+          appleTouchIcon: './assets/icon.png',
+        },
+        manifest: {
+          name: `Doc Time${appNameSuffix}`,
+          short_name: 'DocTime',
+          description: 'Medical case management app for doctors',
+          theme_color: '#4ECDC4',
+          background_color: '#F8F9FA',
+          display: 'standalone',
+          orientation: 'portrait',
+          start_url: '/',
+          scope: '/',
+          icons: [
+            {
+              src: './assets/icon.png',
+              sizes: [96, 128, 192, 256, 384, 512],
+              type: 'image/png',
+            },
+          ],
+        },
       },
       plugins: [
-        [
-          'expo-local-authentication',
-          {
-            faceIDPermission: 'Allow Doc Time to use Face ID to authenticate you.'
-          }
-        ],
         [
           'expo-notifications',
           {

@@ -127,7 +127,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f6eb', // Background to match logo
   },
   scrollView: {
     flex: 1,
@@ -141,7 +141,11 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: theme.spacing.md,
-    elevation: 2,
+    elevation: 0,
+    shadowOpacity: 0,
+    shadowColor: 'transparent',
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
   },
   emptyCard: {
     marginTop: theme.spacing.xl,

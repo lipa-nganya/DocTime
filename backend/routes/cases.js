@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const { Case, Facility, Payer, Procedure, TeamMember, CaseTeamMember, User } = require('../models');
+const { Case, Facility, Payer, Procedure, TeamMember, CaseTeamMember, CaseProcedure, User } = require('../models');
 const { authenticateToken } = require('./auth');
 const { Op } = require('sequelize');
 const cron = require('node-cron');
+const { logActivity, getIpAddress, getUserAgent } = require('../utils/activityLogger');
 
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
@@ -16,6 +17,7 @@ router.post('/', [
   body('dateOfProcedure').isISO8601(),
   body('patientName').notEmpty(),
   body('teamMemberIds').optional().isArray(),
+  body('procedureIds').optional().isArray(),
   body('amount').optional().isNumeric()
 ], async (req, res) => {
   try {
@@ -27,17 +29,21 @@ router.post('/', [
     const {
       dateOfProcedure,
       teamMemberIds = [],
+      procedureIds = [],
       patientName,
       inpatientNumber,
       patientAge,
       facilityId,
       payerId,
       invoiceNumber,
-      procedureId,
+      procedureId, // Keep for backward compatibility
       amount,
       paymentStatus,
       additionalNotes
     } = req.body;
+
+    // Support both procedureIds array and procedureId single value (backward compatibility)
+    const finalProcedureIds = procedureIds.length > 0 ? procedureIds : (procedureId ? [procedureId] : []);
 
     // Create or find facility
     let facility = null;
@@ -64,7 +70,7 @@ router.post('/', [
       facilityId: facility?.id || null,
       payerId: payerId || null,
       invoiceNumber,
-      procedureId: procedureId || null,
+      procedureId: finalProcedureIds.length > 0 ? finalProcedureIds[0] : null, // Keep first procedure for backward compatibility
       amount: amount ? parseFloat(amount) : null,
       paymentStatus: paymentStatus || 'Pending',
       additionalNotes,
@@ -83,18 +89,51 @@ router.post('/', [
       }
     }
 
+    // Add procedures
+    if (finalProcedureIds && finalProcedureIds.length > 0) {
+      for (const procId of finalProcedureIds) {
+        await CaseProcedure.create({
+          caseId: newCase.id,
+          procedureId: procId
+        });
+      }
+    }
+
     // Fetch case with relations
     const caseWithRelations = await Case.findByPk(newCase.id, {
       include: [
         { model: Facility, as: 'facility' },
         { model: Payer, as: 'payer' },
-        { model: Procedure, as: 'procedure' },
+        { model: Procedure, as: 'procedure' }, // Keep for backward compatibility
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        },
         { 
           model: TeamMember, 
           as: 'teamMembers',
           through: { attributes: [] }
         }
       ]
+    });
+
+    // Log activity
+    await logActivity({
+      userId: req.userId,
+      action: 'CREATE_CASE',
+      entityType: 'Case',
+      entityId: newCase.id,
+      description: `Created case for patient "${patientName}"`,
+      metadata: {
+        patientName,
+        dateOfProcedure,
+        facilityId,
+        status: initialStatus,
+        isAutoCompleted: isDatePassed
+      },
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req)
     });
 
     res.status(201).json({
@@ -227,6 +266,7 @@ router.put('/:id', async (req, res) => {
       delete updateData.teamMemberIds;
     }
 
+    const oldData = { ...caseItem.toJSON() };
     await caseItem.update(updateData);
 
     // Fetch updated case with relations
@@ -241,6 +281,22 @@ router.put('/:id', async (req, res) => {
           through: { attributes: [] }
         }
       ]
+    });
+
+    // Log activity
+    await logActivity({
+      userId: req.userId,
+      action: 'UPDATE_CASE',
+      entityType: 'Case',
+      entityId: caseId,
+      description: `Updated case for patient "${caseItem.patientName}"`,
+      metadata: {
+        caseId,
+        oldData,
+        newData: updateData
+      },
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req)
     });
 
     res.json({ success: true, case: updatedCase });
@@ -282,6 +338,21 @@ router.post('/:id/complete', async (req, res) => {
       completedAt: new Date()
     });
 
+    // Log activity
+    await logActivity({
+      userId: req.userId,
+      action: 'COMPLETE_CASE',
+      entityType: 'Case',
+      entityId: caseId,
+      description: `Completed case for patient "${caseItem.patientName}"`,
+      metadata: {
+        caseId,
+        patientName: caseItem.patientName
+      },
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req)
+    });
+
     res.json({ success: true, case: caseItem });
   } catch (error) {
     console.error('Error completing case:', error);
@@ -321,6 +392,21 @@ router.post('/:id/cancel', async (req, res) => {
       cancelledAt: new Date()
     });
 
+    // Log activity
+    await logActivity({
+      userId: req.userId,
+      action: 'CANCEL_CASE',
+      entityType: 'Case',
+      entityId: caseId,
+      description: `Cancelled case for patient "${caseItem.patientName}"`,
+      metadata: {
+        caseId,
+        patientName: caseItem.patientName
+      },
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req)
+    });
+
     res.json({ success: true, case: caseItem });
   } catch (error) {
     console.error('Error cancelling case:', error);
@@ -348,8 +434,25 @@ router.delete('/:id', async (req, res) => {
     // Delete team member associations
     await CaseTeamMember.destroy({ where: { caseId } });
     
+    const patientName = caseItem.patientName;
+    
     // Delete case
     await caseItem.destroy();
+
+    // Log activity
+    await logActivity({
+      userId: req.userId,
+      action: 'DELETE_CASE',
+      entityType: 'Case',
+      entityId: caseId,
+      description: `Deleted case for patient "${patientName}"`,
+      metadata: {
+        caseId,
+        patientName
+      },
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req)
+    });
 
     res.json({ success: true, message: 'Case deleted successfully' });
   } catch (error) {
@@ -455,6 +558,11 @@ router.get('/:id', async (req, res) => {
         { model: Payer, as: 'payer' },
         { model: Procedure, as: 'procedure' },
         { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        },
+        { 
           model: TeamMember, 
           as: 'teamMembers',
           through: { attributes: [] }
@@ -467,7 +575,25 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Case not found' });
     }
 
-    res.json({ success: true, case: caseItem });
+    // Get referral information if case is referred
+    let referral = null;
+    if (caseItem.isReferred) {
+      const { Referral } = require('../models');
+      referral = await Referral.findOne({
+        where: { caseId: caseItem.id },
+        include: [
+          { model: User, as: 'referrer', attributes: ['id', 'phoneNumber', 'role'] },
+          { model: User, as: 'referee', attributes: ['id', 'phoneNumber', 'role'] }
+        ]
+      });
+    }
+
+    const response = { success: true, case: caseItem };
+    if (referral) {
+      response.referral = referral;
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching case:', error);
     res.status(500).json({ error: 'Failed to fetch case' });

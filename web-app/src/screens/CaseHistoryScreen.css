@@ -1,0 +1,172 @@
+.case-history-container {
+  min-height: 100vh;
+  background-color: #f8f6eb;
+}
+
+.tab-buttons {
+  display: flex;
+  padding: 16px;
+  gap: 8px;
+  background-color: #FFFFFF;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #FFFFFF;
+  color: #666666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-button.active {
+  background-color: #4ECDC4;
+  color: white;
+  border-color: #4ECDC4;
+}
+
+.case-history-scroll {
+  padding: 16px;
+  padding-bottom: 100px;
+}
+
+.cases-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.case-card {
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  border: 1px solid #e0e0e0;
+}
+
+.case-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.patient-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: #292F36;
+  margin: 0 0 8px 0;
+}
+
+.case-date {
+  font-size: 14px;
+  color: #666666;
+  margin: 0 0 8px 0;
+}
+
+.case-facility {
+  font-size: 14px;
+  color: #666666;
+  margin: 0 0 8px 0;
+}
+
+.case-amount {
+  font-size: 16px;
+  font-weight: bold;
+  color: #4ECDC4;
+  margin: 8px 0;
+}
+
+.auto-complete-tag {
+  display: inline-block;
+  font-size: 12px;
+  color: #666666;
+  font-style: italic;
+  margin-top: 8px;
+}
+
+.status-label {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.status-label.auto-completed {
+  background-color: #d4edda;
+}
+
+.status-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #292F36;
+}
+
+.btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-outlined {
+  background-color: rgba(0, 196, 204, 0.1) !important;
+  color: #00c4cc !important;
+  border: 2px solid #00c4cc !important;
+  font-weight: 500;
+}
+
+.btn-outlined:hover {
+  background-color: rgba(0, 196, 204, 0.2) !important;
+  border-color: #00a8b0 !important;
+}
+
+.btn-outlined:active {
+  background-color: rgba(0, 196, 204, 0.3) !important;
+  border-color: #008a91 !important;
+}
+
+.btn-primary {
+  background-color: #4ECDC4;
+  color: #f8f6eb;
+}
+
+.btn-primary:hover {
+  background-color: #3db8b0;
+}
+
+.empty-card {
+  background-color: #FFFFFF;
+  border-radius: 8px;
+  padding: 32px;
+  margin-top: 32px;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+}
+
+.empty-text {
+  text-align: center;
+  color: #666666;
+  margin: 0;
+}
+
+.loading-text {
+  text-align: center;
+  color: #666666;
+  padding: 32px;
+}
+
+@media (max-width: 768px) {
+  .case-history-scroll {
+    padding: 12px;
+  }
+}
+

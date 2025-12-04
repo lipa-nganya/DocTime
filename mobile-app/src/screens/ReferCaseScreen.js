@@ -70,6 +70,8 @@ export default function ReferCaseScreen() {
         mode="outlined"
         style={styles.input}
         placeholder="0712345678"
+        outlineColor="#00c4cc"
+        activeOutlineColor="#00c4cc"
       />
 
       <Button
@@ -77,6 +79,8 @@ export default function ReferCaseScreen() {
         onPress={handlePickContact}
         icon="contacts"
         style={styles.button}
+        textColor={theme.colors.outlinedButtonText}
+        borderColor={theme.colors.outlinedButtonBorder}
       >
         Pick from Contacts
       </Button>
@@ -86,6 +90,7 @@ export default function ReferCaseScreen() {
         onPress={handleRefer}
         loading={loading}
         style={styles.submitButton}
+        textColor={theme.colors.buttonText}
       >
         Send Referral
       </Button>
@@ -97,7 +102,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f6eb', // Background to match logo
   },
   title: {
     fontSize: 24,
