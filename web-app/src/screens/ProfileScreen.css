@@ -161,3 +161,26 @@
   border-radius: 2px;
 }
 
+.keyboard-trigger-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  outline: none;
+  font-size: 1px;
+  /* Make it focusable but invisible */
+  pointer-events: auto;
+  z-index: -1;
+}
+
+.keyboard-trigger-input:focus {
+  opacity: 0;
+  outline: none;
+}
+

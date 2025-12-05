@@ -189,7 +189,10 @@ export default function ProfileScreen() {
               onClick={() => {
                 if (keyboardInputRef.current) {
                   keyboardInputRef.current.focus();
-                  keyboardInputRef.current.click();
+                  // On mobile, we need to ensure the input is visible (even if tiny) for keyboard to open
+                  setTimeout(() => {
+                    keyboardInputRef.current?.focus();
+                  }, 100);
                 }
               }}
             >
@@ -201,15 +204,20 @@ export default function ProfileScreen() {
           <input
             ref={keyboardInputRef}
             type="text"
-            style={{
-              position: 'absolute',
-              opacity: 0,
-              width: '1px',
-              height: '1px',
-              pointerEvents: 'none'
-            }}
+            className="keyboard-trigger-input"
             onKeyDown={(e) => {
               const key = e.key.toLowerCase();
+              // Skip special keys
+              if (key.length > 1 && !['backspace', 'delete'].includes(key)) {
+                return;
+              }
+              
+              if (key === 'backspace' || key === 'delete') {
+                // Remove last character
+                typedKeysRef.current = typedKeysRef.current.slice(0, -1);
+                return;
+              }
+              
               typedKeysRef.current += key;
               
               // Keep only last 6 characters
@@ -221,11 +229,19 @@ export default function ProfileScreen() {
               if (typedKeysRef.current.includes('pacman')) {
                 setShowPacman(true);
                 typedKeysRef.current = '';
+                e.target.value = '';
                 e.target.blur();
               }
             }}
+            onChange={(e) => {
+              // Clear the input value to keep it empty
+              e.target.value = '';
+            }}
             autoComplete="off"
-            tabIndex={-1}
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
+            tabIndex={0}
           />
         </div>
       </div>
