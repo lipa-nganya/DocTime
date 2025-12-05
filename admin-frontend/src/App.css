@@ -201,6 +201,34 @@
   background-color: #777;
 }
 
+.btn-primary {
+  background-color: #4ECDC4;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary:hover {
+  background-color: #3ba8a0;
+}
+
+.btn-primary:active {
+  background-color: #2d8a82;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .tabs {
   display: flex;
   gap: 10px;
