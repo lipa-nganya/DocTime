@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import OTPInput from '../components/OTPInput';
+import AlertModal from '../components/AlertModal';
 import './LoginScreen.css';
 
 const logo = './logo.png';
@@ -21,10 +22,11 @@ export default function LoginScreen() {
   const [confirmPin, setConfirmPin] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [resettingPIN, setResettingPIN] = useState(false);
+  const [alertMessage, setAlertMessage] = useState(null);
 
   const showError = (message) => {
     setError(message);
-    window.alert(message);
+    setAlertMessage(message);
   };
 
   const handleLogin = async () => {
@@ -63,12 +65,12 @@ export default function LoginScreen() {
       // Check if response indicates success
       if (response.data && (response.data.success || response.data.message)) {
         setOtpSent(true);
-        window.alert('OTP sent to your phone number');
+        setAlertMessage('OTP sent to your phone number');
       } else {
         // Response doesn't indicate success, but no error was thrown
         // Assume success and proceed (OTP might have been sent)
         setOtpSent(true);
-        window.alert('OTP sent to your phone number');
+        setAlertMessage('OTP sent to your phone number');
       }
     } catch (error) {
       // Even if there's an error, if OTP was generated, allow user to enter it
@@ -85,7 +87,7 @@ export default function LoginScreen() {
         // Allow user to proceed to OTP entry
         console.warn('⚠️  Error occurred, but allowing OTP entry (SMS might have been sent)');
         setOtpSent(true);
-        window.alert('OTP sent to your phone number');
+        setAlertMessage('OTP sent to your phone number');
       }
     } finally {
       setResettingPIN(false);
@@ -117,7 +119,7 @@ export default function LoginScreen() {
         otp,
         newPin
       });
-      window.alert('PIN reset successfully. Please login with your new PIN.');
+      setAlertMessage('PIN reset successfully. Please login with your new PIN.');
       setShowResetPIN(false);
       setOtpSent(false);
       setOtp('');

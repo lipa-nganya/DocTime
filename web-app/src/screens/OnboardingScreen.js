@@ -20,7 +20,9 @@ export default function OnboardingScreen() {
 
   const showError = (message) => {
     setError(message);
-    window.alert(message);
+    // Note: OnboardingScreen uses a custom showMessage function
+    // This is fine as it's part of the onboarding flow
+    console.log(message);
   };
 
   const handleComplete = async () => {

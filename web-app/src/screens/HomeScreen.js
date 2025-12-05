@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import AlertModal from '../components/AlertModal';
 import './HomeScreen.css';
 
 export default function HomeScreen() {
@@ -9,6 +10,7 @@ export default function HomeScreen() {
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [alertMessage, setAlertMessage] = useState(null);
 
   useEffect(() => {
     loadCases();
@@ -28,7 +30,7 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Error loading cases:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to load cases';
-      window.alert(errorMessage);
+      setAlertMessage(errorMessage);
       setCases([]);
     } finally {
       setLoading(false);

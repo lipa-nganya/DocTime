@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import AlertModal from '../components/AlertModal';
 import './ReferCaseScreen.css';
 
 export default function ReferCaseScreen() {
@@ -10,16 +11,17 @@ export default function ReferCaseScreen() {
 
   const [refereePhoneNumber, setRefereePhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
+  const [alertMessage, setAlertMessage] = useState(null);
 
   const handlePickContact = async () => {
     // For web, we can't access contacts directly
     // This would need to be implemented differently or removed for web
-    window.alert('Contact picker is not available on web. Please enter the phone number manually.');
+    setAlertMessage('Contact picker is not available on web. Please enter the phone number manually.');
   };
 
   const handleRefer = async () => {
     if (!refereePhoneNumber) {
-      window.alert('Please enter referee phone number');
+      setAlertMessage('Please enter referee phone number');
       return;
     }
 
@@ -31,15 +33,15 @@ export default function ReferCaseScreen() {
       });
 
       if (response.data.smsSent) {
-        window.alert('Case referred successfully. SMS notification sent to referee.');
+        setAlertMessage('Case referred successfully. SMS notification sent to referee.');
       } else if (response.data.smsWarning) {
-        window.alert(`Case referred successfully, but SMS could not be sent: ${response.data.smsWarning}`);
+        setAlertMessage(`Case referred successfully, but SMS could not be sent: ${response.data.smsWarning}`);
       } else {
-        window.alert('Case referred successfully');
+        setAlertMessage('Case referred successfully');
       }
-      navigate(-1);
+      setTimeout(() => navigate(-1), 1500);
     } catch (error) {
-      window.alert(error.response?.data?.error || 'Failed to refer case');
+      setAlertMessage(error.response?.data?.error || 'Failed to refer case');
     } finally {
       setLoading(false);
     }
