@@ -176,10 +176,12 @@ export default function NewCaseScreen() {
   };
 
   const toggleProcedure = (procedureId) => {
-    if (selectedProcedures.includes(procedureId)) {
-      setSelectedProcedures(selectedProcedures.filter(id => id !== procedureId));
+    // Ensure procedureId is a string for consistent comparison
+    const procedureIdStr = String(procedureId);
+    if (selectedProcedures.includes(procedureIdStr)) {
+      setSelectedProcedures(selectedProcedures.filter(id => id !== procedureIdStr));
     } else {
-      setSelectedProcedures([...selectedProcedures, procedureId]);
+      setSelectedProcedures([...selectedProcedures, procedureIdStr]);
     }
   };
 
@@ -343,38 +345,27 @@ export default function NewCaseScreen() {
                   </p>
                 ) : (
                   <>
-                    {/* Show selected procedures at the top */}
+                    {/* Show selected procedures first, then unselected ones */}
                     {filteredProcedures
-                      .filter(procedure => selectedProcedures.includes(procedure.id))
+                      .filter(procedure => selectedProcedures.includes(String(procedure.id)))
                       .map((procedure) => (
-                        <label key={`top-${procedure.id}`} className="checkbox-row">
+                        <label key={`selected-${procedure.id}`} className="checkbox-row">
                           <input
                             type="checkbox"
-                            checked={selectedProcedures.includes(procedure.id)}
+                            checked={selectedProcedures.includes(String(procedure.id))}
                             onChange={() => toggleProcedure(procedure.id)}
                           />
                           <span className="checkbox-label">{procedure.name}</span>
                         </label>
                       ))}
-                    {/* Show all procedures in the middle */}
-                    {filteredProcedures.map((procedure) => (
-                      <label key={procedure.id} className="checkbox-row">
-                        <input
-                          type="checkbox"
-                          checked={selectedProcedures.includes(procedure.id)}
-                          onChange={() => toggleProcedure(procedure.id)}
-                        />
-                        <span className="checkbox-label">{procedure.name}</span>
-                      </label>
-                    ))}
-                    {/* Show selected procedures again at the bottom */}
+                    {/* Show unselected procedures */}
                     {filteredProcedures
-                      .filter(procedure => selectedProcedures.includes(procedure.id))
+                      .filter(procedure => !selectedProcedures.includes(String(procedure.id)))
                       .map((procedure) => (
-                        <label key={`bottom-${procedure.id}`} className="checkbox-row">
+                        <label key={procedure.id} className="checkbox-row">
                           <input
                             type="checkbox"
-                            checked={selectedProcedures.includes(procedure.id)}
+                            checked={selectedProcedures.includes(String(procedure.id))}
                             onChange={() => toggleProcedure(procedure.id)}
                           />
                           <span className="checkbox-label">{procedure.name}</span>
@@ -388,7 +379,7 @@ export default function NewCaseScreen() {
                   <span className="selected-label">Selected:</span>
                   <span className="selected-text">
                     {procedures
-                      .filter(p => selectedProcedures.includes(p.id))
+                      .filter(p => selectedProcedures.includes(String(p.id)))
                       .map(p => p.name)
                       .join(', ')}
                   </span>
