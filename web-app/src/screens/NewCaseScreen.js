@@ -140,40 +140,23 @@ export default function NewCaseScreen() {
         }, 1500);
       } else {
         // Create new case
-        try {
-          response = await api.post('/cases', payload);
-          
-          // Check if response has case data (success)
-          if (response.data && (response.data.case || response.data.id || response.status === 201 || response.status === 200)) {
-            if (response.data.isAutoCompleted) {
-              setSnackbarMessage('Case has been added and marked as completed (date has passed)');
-              setSnackbarVisible(true);
-              setTimeout(() => {
-                navigate('/', { state: { refresh: true } });
-              }, 2000);
-            } else {
-              setSnackbarMessage('Case created successfully');
-              setSnackbarVisible(true);
-              setTimeout(() => {
-                navigate('/', { state: { refresh: true } });
-              }, 1500);
-            }
-          } else {
-            // Response doesn't have expected structure, but might still be successful
-            setSnackbarMessage('Case created successfully');
-            setSnackbarVisible(true);
-            setTimeout(() => {
-              navigate('/', { state: { refresh: true } });
-            }, 1500);
-          }
-        } catch (createError) {
-          // If error occurs but case might have been created, check if it exists
-          console.error('Error creating case:', createError);
-          // Still show error, but don't prevent navigation if case was created
-          throw createError;
-        } finally {
-          setLoading(false);
+        response = await api.post('/cases', payload);
+        
+        // Success - show appropriate message based on auto-completion
+        if (response.data?.isAutoCompleted) {
+          setSnackbarMessage('Case has been added and marked as completed (date has passed)');
+          setSnackbarVisible(true);
+          setTimeout(() => {
+            navigate('/', { state: { refresh: true } });
+          }, 2000);
+        } else {
+          setSnackbarMessage('Case created successfully');
+          setSnackbarVisible(true);
+          setTimeout(() => {
+            navigate('/', { state: { refresh: true } });
+          }, 1500);
         }
+        setLoading(false);
       }
     } catch (error) {
       console.error(`Error ${isEditMode ? 'updating' : 'creating'} case:`, error);
