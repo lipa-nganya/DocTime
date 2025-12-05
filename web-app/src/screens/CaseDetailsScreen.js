@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import AlertModal from '../components/AlertModal';
 import './CaseDetailsScreen.css';
 
 export default function CaseDetailsScreen() {
@@ -14,6 +15,7 @@ export default function CaseDetailsScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [removeReferralDialogVisible, setRemoveReferralDialogVisible] = useState(false);
+  const [alertMessage, setAlertMessage] = useState(null);
 
   useEffect(() => {
     loadCase();
@@ -25,7 +27,7 @@ export default function CaseDetailsScreen() {
       setCaseItem(response.data.case);
       setReferral(response.data.referral || null);
     } catch (error) {
-      window.alert('Failed to load case details');
+      setAlertMessage('Failed to load case details');
     } finally {
       setLoading(false);
     }
@@ -38,30 +40,30 @@ export default function CaseDetailsScreen() {
   const handleComplete = async () => {
     try {
       await api.post(`/cases/${caseId}/complete`);
-      window.alert('Case marked as completed');
-      navigate(-1);
+      setAlertMessage('Case marked as completed');
+      setTimeout(() => navigate(-1), 1500);
     } catch (error) {
-      window.alert(error.response?.data?.error || 'Failed to complete case');
+      setAlertMessage(error.response?.data?.error || 'Failed to complete case');
     }
   };
 
   const handleCancel = async () => {
     try {
       await api.post(`/cases/${caseId}/cancel`);
-      window.alert('Case cancelled');
-      navigate(-1);
+      setAlertMessage('Case cancelled');
+      setTimeout(() => navigate(-1), 1500);
     } catch (error) {
-      window.alert(error.response?.data?.error || 'Failed to cancel case');
+      setAlertMessage(error.response?.data?.error || 'Failed to cancel case');
     }
   };
 
   const handleDelete = async () => {
     try {
       await api.delete(`/cases/${caseId}`);
-      window.alert('Case deleted');
-      navigate(-1);
+      setAlertMessage('Case deleted');
+      setTimeout(() => navigate(-1), 1500);
     } catch (error) {
-      window.alert(error.response?.data?.error || 'Failed to delete case');
+      setAlertMessage(error.response?.data?.error || 'Failed to delete case');
     } finally {
       setDeleteDialogVisible(false);
     }
@@ -76,11 +78,11 @@ export default function CaseDetailsScreen() {
     
     try {
       await api.delete(`/referrals/${referral.id}`);
-      window.alert('Referral removed successfully');
+      setAlertMessage('Referral removed successfully');
       setRemoveReferralDialogVisible(false);
       loadCase(); // Reload case to update status
     } catch (error) {
-      window.alert(error.response?.data?.error || 'Failed to remove referral');
+      setAlertMessage(error.response?.data?.error || 'Failed to remove referral');
     }
   };
 
@@ -257,6 +259,14 @@ export default function CaseDetailsScreen() {
             </div>
           </div>
         </div>
+      )}
+
+      {alertMessage && (
+        <AlertModal
+          message={alertMessage}
+          onClose={() => setAlertMessage(null)}
+          title={alertMessage.includes('successfully') || alertMessage.includes('completed') || alertMessage.includes('cancelled') || alertMessage.includes('deleted') ? 'Success' : 'Error'}
+        />
       )}
     </div>
   );

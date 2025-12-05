@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Footer from './Footer';
+import ConfirmModal from './ConfirmModal';
 import './MainTabs.css';
 
 export default function MainTabs() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const getGreeting = () => {
     if (!user) return 'Hi';
@@ -23,9 +25,13 @@ export default function MainTabs() {
     return 'Hi';
   };
 
-  const handleLogout = async () => {
-    const confirmed = window.confirm('Are you sure you want to logout?');
-    if (confirmed && typeof logout === 'function') {
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutConfirm(false);
+    if (typeof logout === 'function') {
       await logout();
     }
   };
@@ -124,6 +130,17 @@ export default function MainTabs() {
           <span className="nav-label">Info</span>
         </Link>
       </nav>
+
+      {showLogoutConfirm && (
+        <ConfirmModal
+          message="Are you sure you want to logout?"
+          onConfirm={confirmLogout}
+          onCancel={() => setShowLogoutConfirm(false)}
+          title="Confirm Logout"
+          confirmText="Logout"
+          cancelText="Cancel"
+        />
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import api from '../services/api';
 import CalendarPicker from '../components/CalendarPicker';
 import SelectDropdown from '../components/SelectDropdown';
 import AutocompleteDropdown from '../components/AutocompleteDropdown';
+import AlertModal from '../components/AlertModal';
 import './NewCaseScreen.css';
 
 export default function NewCaseScreen() {
@@ -37,6 +38,7 @@ export default function NewCaseScreen() {
   const [procedureSearchQuery, setProcedureSearchQuery] = useState('');
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [alertMessage, setAlertMessage] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -65,7 +67,7 @@ export default function NewCaseScreen() {
       setTeamMembers(members);
     } catch (error) {
       console.error('Error loading data:', error);
-      window.alert(`Failed to load data: ${error.response?.data?.error || error.message}`);
+      setAlertMessage(`Failed to load data: ${error.response?.data?.error || error.message}`);
     }
   };
 
@@ -101,13 +103,13 @@ export default function NewCaseScreen() {
       }
     } catch (error) {
       console.error('Error loading case data:', error);
-      window.alert(`Failed to load case data: ${error.response?.data?.error || error.message}`);
+      setAlertMessage(`Failed to load case data: ${error.response?.data?.error || error.message}`);
     }
   };
 
   const handleSubmit = async () => {
     if (!patientName || !dateOfProcedure) {
-      window.alert('Please fill in required fields');
+      setAlertMessage('Please fill in required fields');
       return;
     }
 
@@ -164,7 +166,7 @@ export default function NewCaseScreen() {
                           error.response?.data?.message || 
                           error.message || 
                           `Failed to ${isEditMode ? 'update' : 'create'} case`;
-      window.alert(errorMessage);
+      setAlertMessage(errorMessage);
       setLoading(false);
     }
   };
@@ -459,6 +461,14 @@ export default function NewCaseScreen() {
         <div className="snackbar">
           {snackbarMessage}
         </div>
+      )}
+
+      {alertMessage && (
+        <AlertModal
+          message={alertMessage}
+          onClose={() => setAlertMessage(null)}
+          title="Error"
+        />
       )}
     </div>
   );

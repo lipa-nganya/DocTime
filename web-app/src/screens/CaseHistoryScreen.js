@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import AlertModal from '../components/AlertModal';
 import './CaseHistoryScreen.css';
 
 export default function CaseHistoryScreen() {
@@ -10,6 +11,7 @@ export default function CaseHistoryScreen() {
   const [cancelledCases, setCancelledCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [alertMessage, setAlertMessage] = useState(null);
 
   useEffect(() => {
     loadCases();
@@ -26,7 +28,7 @@ export default function CaseHistoryScreen() {
       setCancelledCases(cancelledRes.data.cases || []);
     } catch (error) {
       console.error('Error loading cases:', error);
-      window.alert('Failed to load case history');
+      setAlertMessage('Failed to load case history');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -92,7 +94,7 @@ export default function CaseHistoryScreen() {
       const errorMessage = error.response?.data?.error || 
                           error.message || 
                           'Failed to generate invoice';
-      window.alert(errorMessage);
+      setAlertMessage(errorMessage);
     }
   };
 
@@ -100,10 +102,10 @@ export default function CaseHistoryScreen() {
     e.stopPropagation();
     try {
       await api.post(`/cases/${caseId}/restore`);
-      window.alert('Case restored');
+      setAlertMessage('Case restored successfully');
       loadCases();
     } catch (error) {
-      window.alert(error.response?.data?.error || 'Failed to restore case');
+      setAlertMessage(error.response?.data?.error || 'Failed to restore case');
     }
   };
 
@@ -177,6 +179,14 @@ export default function CaseHistoryScreen() {
           </div>
         )}
       </div>
+
+      {alertMessage && (
+        <AlertModal
+          message={alertMessage}
+          onClose={() => setAlertMessage(null)}
+          title={alertMessage.includes('successfully') ? 'Success' : 'Error'}
+        />
+      )}
     </div>
   );
 }

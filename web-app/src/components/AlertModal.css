@@ -91,6 +91,54 @@
   transform: translateY(0);
 }
 
+.btn-modal-confirm {
+  padding: 12px 32px;
+  background-color: #4ECDC4;
+  color: #f8f6eb;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Lato', sans-serif;
+  min-width: 80px;
+}
+
+.btn-modal-confirm:hover {
+  background-color: #3db8b0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(78, 205, 196, 0.3);
+}
+
+.btn-modal-confirm:active {
+  transform: translateY(0);
+}
+
+.btn-modal-cancel {
+  padding: 12px 32px;
+  background-color: #e0e0e0;
+  color: #292F36;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Lato', sans-serif;
+  min-width: 80px;
+}
+
+.btn-modal-cancel:hover {
+  background-color: #d0d0d0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-modal-cancel:active {
+  transform: translateY(0);
+}
+
 @media (max-width: 768px) {
   .alert-modal-content {
     padding: 24px;
