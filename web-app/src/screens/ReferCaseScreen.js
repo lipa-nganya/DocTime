@@ -85,6 +85,14 @@ export default function ReferCaseScreen() {
           {loading ? 'Sending...' : 'Send Referral'}
         </button>
       </div>
+
+      {alertMessage && (
+        <AlertModal
+          message={alertMessage}
+          onClose={() => setAlertMessage(null)}
+          title={alertMessage.includes('successfully') ? 'Success' : 'Notification'}
+        />
+      )}
     </div>
   );
 }

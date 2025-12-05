@@ -95,6 +95,14 @@ export default function HomeScreen() {
       >
         +
       </button>
+
+      {alertMessage && (
+        <AlertModal
+          message={alertMessage}
+          onClose={() => setAlertMessage(null)}
+          title="Error"
+        />
+      )}
     </div>
   );
 }
