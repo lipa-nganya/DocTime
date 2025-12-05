@@ -1,0 +1,127 @@
+.autocomplete-dropdown-container {
+  margin-bottom: 20px;
+}
+
+.autocomplete-dropdown-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.autocomplete-dropdown-wrapper {
+  position: relative;
+}
+
+.autocomplete-dropdown-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  transition: border-color 0.2s;
+}
+
+.autocomplete-dropdown-header.open {
+  border-color: #4ECDC4;
+  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.1);
+}
+
+.autocomplete-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 12px 40px 12px 12px;
+  font-size: 14px;
+  background: transparent;
+  color: #333;
+}
+
+.autocomplete-input::placeholder {
+  color: #999;
+}
+
+.autocomplete-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+}
+
+.autocomplete-clear {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.autocomplete-clear:hover {
+  color: #ff4444;
+}
+
+.autocomplete-icon {
+  color: #666;
+  font-size: 12px;
+  user-select: none;
+}
+
+.autocomplete-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-top: -1px;
+}
+
+.autocomplete-option {
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 14px;
+  color: #333;
+}
+
+.autocomplete-option:hover {
+  background-color: #f5f5f5;
+}
+
+.autocomplete-option.selected {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  font-weight: 500;
+}
+
+.autocomplete-no-results {
+  padding: 12px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.empty-state-text {
+  color: #999;
+  font-size: 14px;
+  font-style: italic;
+  margin: 0;
+  padding: 8px 0;
+}
+

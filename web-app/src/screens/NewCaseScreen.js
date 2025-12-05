@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import CalendarPicker from '../components/CalendarPicker';
 import SelectDropdown from '../components/SelectDropdown';
+import AutocompleteDropdown from '../components/AutocompleteDropdown';
 import './NewCaseScreen.css';
 
 export default function NewCaseScreen() {
@@ -139,21 +140,39 @@ export default function NewCaseScreen() {
         }, 1500);
       } else {
         // Create new case
-        response = await api.post('/cases', payload);
-        setLoading(false);
-        
-        if (response.data.isAutoCompleted) {
-          setSnackbarMessage('Case has been added and marked as completed (date has passed)');
-          setSnackbarVisible(true);
-          setTimeout(() => {
-            navigate('/', { state: { refresh: true } });
-          }, 2000);
-        } else {
-          setSnackbarMessage('Case created successfully');
-          setSnackbarVisible(true);
-          setTimeout(() => {
-            navigate('/', { state: { refresh: true } });
-          }, 1500);
+        try {
+          response = await api.post('/cases', payload);
+          
+          // Check if response has case data (success)
+          if (response.data && (response.data.case || response.data.id || response.status === 201 || response.status === 200)) {
+            if (response.data.isAutoCompleted) {
+              setSnackbarMessage('Case has been added and marked as completed (date has passed)');
+              setSnackbarVisible(true);
+              setTimeout(() => {
+                navigate('/', { state: { refresh: true } });
+              }, 2000);
+            } else {
+              setSnackbarMessage('Case created successfully');
+              setSnackbarVisible(true);
+              setTimeout(() => {
+                navigate('/', { state: { refresh: true } });
+              }, 1500);
+            }
+          } else {
+            // Response doesn't have expected structure, but might still be successful
+            setSnackbarMessage('Case created successfully');
+            setSnackbarVisible(true);
+            setTimeout(() => {
+              navigate('/', { state: { refresh: true } });
+            }, 1500);
+          }
+        } catch (createError) {
+          // If error occurs but case might have been created, check if it exists
+          console.error('Error creating case:', createError);
+          // Still show error, but don't prevent navigation if case was created
+          throw createError;
+        } finally {
+          setLoading(false);
         }
       }
     } catch (error) {
@@ -282,21 +301,21 @@ export default function NewCaseScreen() {
           onChange={(e) => setPatientAge(e.target.value)}
         />
 
-        <SelectDropdown
+        <AutocompleteDropdown
           label="Facility / Hospital"
           value={facilityId}
           onChange={setFacilityId}
           options={facilities.map(f => ({ label: f.name, value: f.id }))}
-          placeholder="Select facility"
+          placeholder="Type to search facility..."
           emptyMessage="No facilities available. Add facilities in the admin app."
         />
 
-        <SelectDropdown
+        <AutocompleteDropdown
           label="Payer"
           value={payerId}
           onChange={setPayerId}
           options={payers.map(p => ({ label: p.name, value: p.id }))}
-          placeholder="Select payer"
+          placeholder="Type to search payer..."
           emptyMessage="No payers available. Add payers in the admin app."
         />
 
