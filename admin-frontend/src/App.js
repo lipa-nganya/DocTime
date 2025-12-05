@@ -2,10 +2,41 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import LogsScreen from './screens/LogsScreen';
+import FacilitiesScreen from './screens/FacilitiesScreen';
+import PayersScreen from './screens/PayersScreen';
 import AlertModal from './components/AlertModal';
+import { getApiBaseUrl } from './services/environment';
 import './App.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+// Function to get the current API base URL (supports local/cloud switching)
+// Ensures the URL always includes /api
+const getAPIBaseURL = () => {
+  // In production, always use the build-time environment variable
+  // In development, allow runtime switching via environment service
+  let url;
+  if (process.env.REACT_APP_API_URL) {
+    // Build-time configuration (production)
+    url = process.env.REACT_APP_API_URL;
+  } else {
+    // Runtime configuration (development)
+    url = getApiBaseUrl();
+  }
+  
+  // Ensure URL ends with /api
+  if (!url.endsWith('/api')) {
+    if (url.endsWith('/')) {
+      url = `${url}api`;
+    } else {
+      url = `${url}/api`;
+    }
+  }
+  
+  return url;
+};
+
+// Export a function that always gets the current API URL
+// This ensures we always use the latest environment setting
+const getCurrentApiUrl = () => getAPIBaseURL();
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -17,7 +48,10 @@ function Dashboard() {
 
   const loadDashboard = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/dashboard`);
+      // Add timeout to prevent hanging
+      const response = await axios.get(`${getCurrentApiUrl()}/admin/dashboard`, {
+        timeout: 10000 // 10 second timeout
+      });
       if (response.data && response.data.dashboard) {
         setStats(response.data.dashboard);
       } else {
@@ -32,6 +66,7 @@ function Dashboard() {
       }
     } catch (error) {
       console.error('Error loading dashboard:', error);
+      // Always set stats to 0 values on error and stop loading
       setStats({
         completedCases: 0,
         cancelledCases: 0,
@@ -41,6 +76,7 @@ function Dashboard() {
         activeUsers: 0
       });
     } finally {
+      // Always stop loading, even on error
       setLoading(false);
     }
   };
@@ -90,7 +126,7 @@ function Users() {
 
   const loadUsers = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/users`);
+      const response = await axios.get(`${getCurrentApiUrl()}/admin/users`);
       setUsers(response.data.users);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -154,7 +190,7 @@ function Cases() {
 
   const loadUsers = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/users`);
+      const response = await axios.get(`${getCurrentApiUrl()}/admin/users`);
       setUsers(response.data.users || []);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -165,7 +201,7 @@ function Cases() {
     setLoading(true);
     try {
       if (activeTab === 'ongoing') {
-        const response = await axios.get(`${API_BASE_URL}/admin/ongoing-cases`);
+        const response = await axios.get(`${getCurrentApiUrl()}/admin/ongoing-cases`);
         const cases = response.data.cases || [];
         // Debug: log first case to see user structure
         if (cases.length > 0 && cases[0].user) {
@@ -179,7 +215,7 @@ function Cases() {
         }
         setOngoingCases(cases);
       } else if (activeTab === 'completed') {
-        const response = await axios.get(`${API_BASE_URL}/admin/completed-cases`);
+        const response = await axios.get(`${getCurrentApiUrl()}/admin/completed-cases`);
         const cases = response.data.cases || [];
         if (cases.length > 0 && cases[0].user) {
           console.log('Sample case user data:', {
@@ -192,7 +228,7 @@ function Cases() {
         }
         setCompletedCases(cases);
       } else if (activeTab === 'cancelled') {
-        const response = await axios.get(`${API_BASE_URL}/admin/cancelled-cases`);
+        const response = await axios.get(`${getCurrentApiUrl()}/admin/cancelled-cases`);
         const cases = response.data.cases || [];
         if (cases.length > 0 && cases[0].user) {
           console.log('Sample case user data:', {
@@ -238,7 +274,7 @@ function Cases() {
     if (!editingCase) return;
     
     try {
-      await axios.put(`${API_BASE_URL}/admin/cases/${editingCase.id}`, editForm);
+      await axios.put(`${getCurrentApiUrl()}/admin/cases/${editingCase.id}`, editForm);
       setEditingCase(null);
       setEditForm({});
       loadCases();
@@ -289,7 +325,7 @@ function Cases() {
 
     setMoving(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/admin/cases/move`, {
+      const response = await axios.post(`${getCurrentApiUrl()}/admin/cases/move`, {
         caseIds: selectedCases,
         targetUserId
       });
@@ -582,7 +618,7 @@ function Referrals() {
 
   const loadReferrals = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/referrals`);
+      const response = await axios.get(`${getCurrentApiUrl()}/admin/referrals`);
       setReferrals(response.data.referrals);
     } catch (error) {
       console.error('Error loading referrals:', error);
@@ -636,7 +672,7 @@ function Roles() {
 
   const loadRoles = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/roles`);
+      const response = await axios.get(`${getCurrentApiUrl()}/admin/roles`);
       setRoles(response.data.roles);
     } catch (error) {
       console.error('Error loading roles:', error);
@@ -650,7 +686,7 @@ function Roles() {
     if (!selectedRole || !newName.trim()) return;
 
     try {
-      await axios.post(`${API_BASE_URL}/admin/roles/${selectedRole.name}/team-members`, {
+      await axios.post(`${getCurrentApiUrl()}/admin/roles/${selectedRole.name}/team-members`, {
         names: [newName.trim()]
       });
       setNewName('');
@@ -667,7 +703,7 @@ function Roles() {
     if (!roleToDelete) return;
 
     try {
-      await axios.delete(`${API_BASE_URL}/admin/roles/${roleToDelete.id}`);
+      await axios.delete(`${getCurrentApiUrl()}/admin/roles/${roleToDelete.id}`);
       setRoleToDelete(null);
       loadRoles();
       setAlertMessage('Role deleted successfully');
@@ -690,7 +726,7 @@ function Roles() {
       // We need to update the role with the new list
       // Since there's no specific endpoint, we'll need to add one or use a workaround
       // For now, let's add a PUT endpoint for updating team members
-      await axios.put(`${API_BASE_URL}/admin/roles/${role.id}/team-members`, {
+      await axios.put(`${getCurrentApiUrl()}/admin/roles/${role.id}/team-members`, {
         names: updatedNames
       });
       loadRoles();
@@ -816,7 +852,7 @@ function AdminReports() {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/users`);
+      const response = await axios.get(`${getCurrentApiUrl()}/admin/users`);
       setUsers(response.data.users);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -839,7 +875,7 @@ function AdminReports() {
       }
       
       const queryString = params.toString();
-      const url = `${API_BASE_URL}/admin/reports/${selectedUserId}${queryString ? `?${queryString}` : ''}`;
+      const url = `${getCurrentApiUrl()}/admin/reports/${selectedUserId}${queryString ? `?${queryString}` : ''}`;
       const response = await axios.get(url);
       setReports(response.data);
     } catch (error) {
@@ -1033,11 +1069,14 @@ function AdminReports() {
 
 import OTPSMSSettings from './components/OTPSMSSettings';
 import ReferralSMSSettings from './components/ReferralSMSSettings';
+import EnvironmentSettings from './components/EnvironmentSettings';
 
 function Settings() {
   return (
     <div className="settings">
       <h2>Settings</h2>
+      <EnvironmentSettings />
+      <div style={{ marginTop: '2rem' }}></div>
       <OTPSMSSettings />
       <div style={{ marginTop: '2rem' }}></div>
       <ReferralSMSSettings />
@@ -1057,6 +1096,8 @@ function App() {
           <Link to="/referrals">Referrals</Link>
           <Link to="/reports">Reports</Link>
           {/* <Link to="/roles">Roles</Link> */}
+          <Link to="/facilities">Facilities</Link>
+          <Link to="/payers">Payers</Link>
           <Link to="/logs">Logs</Link>
           <Link to="/settings">Settings</Link>
         </nav>
@@ -1069,6 +1110,8 @@ function App() {
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/reports" element={<AdminReports />} />
             {/* <Route path="/roles" element={<Roles />} /> */}
+            <Route path="/facilities" element={<FacilitiesScreen />} />
+            <Route path="/payers" element={<PayersScreen />} />
             <Route path="/logs" element={<LogsScreen />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
