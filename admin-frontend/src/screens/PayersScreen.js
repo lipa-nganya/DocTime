@@ -61,11 +61,16 @@ export default function PayersScreen() {
     setDeletingId(id);
     try {
       await axios.delete(`${getCurrentApiUrl()}/payers/${id}`);
+      // Optimistically update the state by removing the deleted payer
+      setPayers(prevPayers => prevPayers.filter(p => p.id !== id));
       setAlertMessage('Payer deleted successfully');
-      loadPayers();
+      // Reload to ensure consistency
+      await loadPayers();
     } catch (error) {
       console.error('Error deleting payer:', error);
       setAlertMessage(error.response?.data?.error || 'Failed to delete payer');
+      // Reload on error to ensure UI is in sync
+      loadPayers();
     } finally {
       setDeletingId(null);
     }

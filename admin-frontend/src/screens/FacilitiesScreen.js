@@ -61,11 +61,16 @@ export default function FacilitiesScreen() {
     setDeletingId(id);
     try {
       await axios.delete(`${getCurrentApiUrl()}/facilities/${id}`);
+      // Optimistically update the state by removing the deleted facility
+      setFacilities(prevFacilities => prevFacilities.filter(f => f.id !== id));
       setAlertMessage('Facility deleted successfully');
-      loadFacilities();
+      // Reload to ensure consistency
+      await loadFacilities();
     } catch (error) {
       console.error('Error deleting facility:', error);
       setAlertMessage(error.response?.data?.error || 'Failed to delete facility');
+      // Reload on error to ensure UI is in sync
+      loadFacilities();
     } finally {
       setDeletingId(null);
     }
