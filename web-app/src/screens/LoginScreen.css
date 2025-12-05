@@ -8,6 +8,14 @@
   background-color: #f8f6eb;
 }
 
+.screen-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #292F36;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
 .login-logo {
   width: 150px;
   height: 150px;
@@ -101,6 +109,11 @@
 @media (max-width: 768px) {
   .login-container {
     padding: 16px;
+  }
+
+  .screen-title {
+    font-size: 28px;
+    margin-bottom: 20px;
   }
 
   .login-logo {

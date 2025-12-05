@@ -5,7 +5,7 @@ import api from '../services/api';
 import OTPInput from '../components/OTPInput';
 import './LoginScreen.css';
 
-const logo = '/logo.png';
+const logo = './logo.png';
 
 export default function LoginScreen() {
   const navigate = useNavigate();
@@ -108,6 +108,7 @@ export default function LoginScreen() {
 
   return (
     <div className="login-container">
+      <h1 className="screen-title">Login</h1>
       <img src={logo} alt="Doc Time Logo" className="login-logo" />
       
       {error && (

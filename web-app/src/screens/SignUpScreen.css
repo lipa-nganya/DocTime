@@ -8,6 +8,14 @@
   background-color: #f8f6eb;
 }
 
+.screen-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #292F36;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
 .signup-logo {
   width: 150px;
   height: 150px;
@@ -81,17 +89,88 @@
   color: #4ECDC4;
 }
 
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #FFE5E5;
+  border: 2px solid #FF6B6B;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 400px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.error-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.error-message {
+  color: #FF6B6B;
+  font-size: 14px;
+  flex: 1;
+  font-weight: 500;
+}
+
+.error-dismiss {
+  background: none;
+  border: none;
+  color: #FF6B6B;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.error-dismiss:hover {
+  transform: scale(1.2);
+}
+
+.error-dismiss:active {
+  transform: scale(1);
+}
+
 .error-text {
   color: #FF6B6B;
   text-align: center;
   margin-bottom: 16px;
   width: 100%;
   max-width: 400px;
+  padding: 12px;
+  background-color: #FFE5E5;
+  border-radius: 8px;
+  border: 1px solid #FF6B6B;
 }
 
 @media (max-width: 768px) {
   .signup-container {
     padding: 16px;
+  }
+
+  .screen-title {
+    font-size: 28px;
+    margin-bottom: 20px;
   }
 
   .signup-logo {

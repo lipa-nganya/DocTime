@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import OTPInput from '../components/OTPInput';
+import AlertModal from '../components/AlertModal';
 import './SignUpScreen.css';
 
-const logo = '/logo.png';
+const logo = './logo.png';
 
 export default function SignUpScreen() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function SignUpScreen() {
   const [step, setStep] = useState('phone');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const formatPhoneNumber = (phone) => {
     let formatted = phone.replace(/[\s\-\(\)]/g, '').replace(/\D/g, '');
@@ -39,7 +41,7 @@ export default function SignUpScreen() {
 
   const showError = (message) => {
     setError(message);
-    window.alert(message);
+    setShowErrorModal(true);
   };
 
   const handleRequestOTP = async () => {
@@ -60,7 +62,8 @@ export default function SignUpScreen() {
       setStep('otp');
       
       if (response.data.otp) {
-        window.alert(`Your OTP is: ${response.data.otp}\n\n(This is shown in development mode)`);
+        // Show OTP in development mode (non-blocking)
+        console.log(`Development OTP: ${response.data.otp}`);
       }
     } catch (error) {
       showError(error.response?.data?.error || error.message || 'Failed to send OTP');
@@ -133,11 +136,25 @@ export default function SignUpScreen() {
 
   return (
     <div className="signup-container">
+      <h1 className="screen-title">Sign Up</h1>
       <img src={logo} alt="Doc Time Logo" className="signup-logo" />
 
-      {error && (
-        <div className="error-text">{error}</div>
+      {error && !showErrorModal && (
+        <div className="error-banner">
+          <span className="error-icon">⚠️</span>
+          <span className="error-message">{error}</span>
+          <button className="error-dismiss" onClick={() => setError('')}>×</button>
+        </div>
       )}
+
+      <AlertModal
+        message={error}
+        onClose={() => {
+          setShowErrorModal(false);
+          setError('');
+        }}
+        title="Sign Up Error"
+      />
 
       {step === 'phone' && (
         <>
