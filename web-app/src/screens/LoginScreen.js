@@ -262,6 +262,14 @@ export default function LoginScreen() {
           )}
         </div>
       )}
+
+      {alertMessage && (
+        <AlertModal
+          message={alertMessage}
+          onClose={() => setAlertMessage(null)}
+          title={alertMessage.includes('successfully') ? 'Success' : 'Notification'}
+        />
+      )}
     </div>
   );
 }
