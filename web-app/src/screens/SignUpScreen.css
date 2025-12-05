@@ -8,10 +8,10 @@
   background-color: #f8f6eb;
 }
 
-.screen-title {
+.signup-container .screen-title {
   font-size: 32px;
   font-weight: 600;
-  color: #00c4cc;
+  color: #00c4cc !important;
   margin-bottom: 24px;
   text-align: center;
 }
@@ -168,9 +168,10 @@
     padding: 16px;
   }
 
-  .screen-title {
+  .signup-container .screen-title {
     font-size: 28px;
     margin-bottom: 20px;
+    color: #00c4cc !important;
   }
 
   .signup-logo {
