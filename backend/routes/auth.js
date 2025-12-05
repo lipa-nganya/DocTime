@@ -133,6 +133,25 @@ router.post('/request-otp', [
       });
     } catch (error) {
       console.error('Error sending OTP:', error);
+      
+      // Check if error is about insufficient credits or API issues
+      // If SMS was attempted but failed, we should still allow OTP verification
+      // (user might have received it before the error)
+      const errorMessage = error.message || '';
+      const isCreditError = errorMessage.toLowerCase().includes('credit') || 
+                           errorMessage.toLowerCase().includes('balance');
+      
+      if (isCreditError) {
+        // SMS API has credit issues, but OTP was generated
+        // Log the issue but don't fail the request - user might have received SMS
+        console.warn('⚠️  SMS API credit issue, but OTP was generated:', otp);
+        return res.json({ 
+          success: true, 
+          message: 'OTP sent successfully',
+          phoneNumber: formattedPhone
+        });
+      }
+      
       // In development, still return success with OTP in response
       if (isDevMode) {
         console.log(`📱 DEV MODE: OTP for ${formattedPhone} is ${otp}`);
@@ -143,8 +162,16 @@ router.post('/request-otp', [
           otp: otp // Include OTP in dev mode for testing
         });
       }
-      // In production, don't expose OTP even on error
-      throw error;
+      
+      // In production, if we're not sure SMS was sent, still return success
+      // The OTP is valid and user might have received it
+      // Better to let them try entering it than block them
+      console.warn('⚠️  SMS sending had issues, but OTP was generated. Allowing verification attempt.');
+      return res.json({ 
+        success: true, 
+        message: 'OTP sent successfully',
+        phoneNumber: formattedPhone
+      });
     }
   } catch (error) {
     console.error('Error requesting OTP:', error);

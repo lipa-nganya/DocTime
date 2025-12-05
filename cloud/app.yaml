@@ -1,0 +1,47 @@
+# Google App Engine configuration for Doc Time Backend
+# Deploy with: gcloud app deploy
+
+runtime: nodejs20
+
+env_variables:
+  NODE_ENV: production
+  PORT: 8080
+  # Database connection will be set via Cloud SQL connection
+  # DATABASE_URL will be set automatically when using Cloud SQL proxy
+  DB_REQUIRE_SSL: 'true'
+  # JWT Secret - set via: gcloud app deploy --set-env-vars JWT_SECRET=your-secret
+  # SMS/Email credentials - set via environment variables
+
+# Automatic scaling with cost-saving min instances
+automatic_scaling:
+  min_instances: 0  # Scale to zero when not in use (cost savings)
+  max_instances: 2  # Limit max instances to control costs
+  target_cpu_utilization: 0.6
+  target_throughput_utilization: 0.6
+
+# Health check
+readiness_check:
+  path: /api/health
+  check_interval_sec: 5
+  timeout_sec: 4
+  failure_threshold: 2
+  success_threshold: 2
+  app_start_timeout_sec: 300
+
+liveness_check:
+  path: /api/health
+  check_interval_sec: 30
+  timeout_sec: 4
+  failure_threshold: 4
+  success_threshold: 2
+
+# Cloud SQL connection
+beta_settings:
+  cloud_sql_instances: PROJECT_ID:REGION:INSTANCE_NAME
+
+# Resources (optimized for cost)
+resources:
+  cpu: 0.5
+  memory_gb: 0.5
+  disk_size_gb: 10
+

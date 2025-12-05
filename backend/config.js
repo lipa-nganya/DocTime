@@ -13,7 +13,15 @@ module.exports = {
     database: process.env.DB_NAME || 'doctime',
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
-    dialect: 'postgres'
+    dialect: 'postgres',
+    // Optimize connection pool for development too
+    pool: {
+      max: 2, // Reduced for dev to save resources
+      min: 1,
+      acquire: 10000,
+      idle: 30000,
+      evict: 1000
+    }
   },
   'cloud-dev': {
     use_env_variable: 'DATABASE_URL',
@@ -31,39 +39,27 @@ module.exports = {
   production: {
     use_env_variable: 'DATABASE_URL',
     dialect: 'postgres',
-    dialectOptions: (() => {
-      const databaseUrl = process.env.DATABASE_URL || '';
-      const isCloudSql = databaseUrl.includes('/cloudsql/');
-      
-      if (isCloudSql) {
-        return {
+    dialectOptions: shouldUseSsl
+      ? {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false
+          },
           connectTimeout: 10000,
           statement_timeout: 5000,
           query_timeout: 5000
-        };
-      }
-      
-      return shouldUseSsl
-        ? {
-            ssl: {
-              require: true,
-              rejectUnauthorized: false
-            },
-            connectTimeout: 10000,
-            statement_timeout: 5000,
-            query_timeout: 5000
-          }
-        : {
-            connectTimeout: 10000,
-            statement_timeout: 5000,
-            query_timeout: 5000
-          };
-    })(),
+        }
+      : {
+          // No SSL for Unix socket connections
+          connectTimeout: 10000,
+          statement_timeout: 5000,
+          query_timeout: 5000
+        },
     pool: {
-      max: process.env.DB_POOL_MAX ? parseInt(process.env.DB_POOL_MAX) : 5,
+      max: process.env.DB_POOL_MAX ? parseInt(process.env.DB_POOL_MAX) : 3,
       min: process.env.DB_POOL_MIN ? parseInt(process.env.DB_POOL_MIN) : 1,
       acquire: 10000,
-      idle: 10000,
+      idle: 30000,
       evict: 1000
     },
     logging: false

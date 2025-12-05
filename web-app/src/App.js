@@ -12,6 +12,10 @@ import CaseHistoryScreen from './screens/CaseHistoryScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import ReferCaseScreen from './screens/ReferCaseScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import InfoScreen from './screens/InfoScreen';
+import TermsOfUseScreen from './screens/TermsOfUseScreen';
+import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
+import ContactUsScreen from './screens/ContactUsScreen';
 import MainTabs from './components/MainTabs';
 import ScreenWithHeader from './components/ScreenWithHeader';
 import './App.css';
@@ -64,7 +68,11 @@ function AppNavigator() {
             <Route path="history" element={<CaseHistoryScreen />} />
             <Route path="reports" element={<ReportsScreen />} />
             <Route path="profile" element={<ProfileScreen />} />
+            <Route path="info" element={<InfoScreen />} />
           </Route>
+          <Route path="/info/terms" element={<TermsOfUseScreen />} />
+          <Route path="/info/privacy" element={<PrivacyPolicyScreen />} />
+          <Route path="/info/contact" element={<ScreenWithHeader title="Contact Us"><ContactUsScreen /></ScreenWithHeader>} />
           <Route path="/new-case" element={<ScreenWithHeader title="New Case"><NewCaseScreen /></ScreenWithHeader>} />
           <Route path="/case/:id" element={<ScreenWithHeader title="Case Details"><CaseDetailsScreen /></ScreenWithHeader>} />
           <Route path="/refer/:id" element={<ScreenWithHeader title="Refer Case"><ReferCaseScreen /></ScreenWithHeader>} />

@@ -16,6 +16,7 @@
   width: 100%;
   max-width: 300px;
   padding: 16px;
+  padding-right: 40px; /* Add space for calendar icon */
   font-size: 16px;
   border: 2px solid #00c4cc;
   border-radius: 4px;
@@ -24,11 +25,66 @@
   outline: none;
   font-family: inherit;
   transition: border-color 0.2s;
+  position: relative;
+  /* Ensure calendar icon is visible on all devices */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Add calendar icon for better visibility on mobile */
+.calendar-picker-input::-webkit-calendar-picker-indicator {
+  opacity: 1 !important;
+  cursor: pointer;
+  position: absolute;
+  right: 10px;
+  width: 24px !important;
+  height: 24px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2300c4cc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 1;
+}
+
+/* For Firefox */
+.calendar-picker-input::-moz-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
 }
 
 .calendar-picker-input:focus {
   border-color: #4ECDC4;
   box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+}
+
+/* Custom calendar icon overlay for better visibility */
+.calendar-icon-overlay {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2300c4cc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 2;
+  opacity: 1;
+}
+
+/* On mobile, show overlay icon more prominently */
+@media (max-width: 768px) {
+  .calendar-icon-overlay {
+    width: 28px;
+    height: 28px;
+    right: 10px;
+  }
 }
 
 @media (max-width: 768px) {

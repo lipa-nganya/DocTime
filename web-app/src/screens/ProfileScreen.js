@@ -15,6 +15,7 @@ export default function ProfileScreen() {
   const [error, setError] = useState('');
   const [showPacman, setShowPacman] = useState(false);
   const typedKeysRef = useRef('');
+  const keyboardInputRef = useRef(null);
 
   useEffect(() => {
     loadProfile();
@@ -180,7 +181,52 @@ export default function ProfileScreen() {
         </div>
 
         <div className="easter-egg-hint">
-          <p className="easter-egg-text">Open Keyboard and type "pacman"</p>
+          <p className="easter-egg-text">
+            Open{' '}
+            <button
+              type="button"
+              className="keyboard-link"
+              onClick={() => {
+                if (keyboardInputRef.current) {
+                  keyboardInputRef.current.focus();
+                  keyboardInputRef.current.click();
+                }
+              }}
+            >
+              keyboard
+            </button>
+            {' '}and type "pacman"
+          </p>
+          {/* Hidden input to trigger keyboard */}
+          <input
+            ref={keyboardInputRef}
+            type="text"
+            style={{
+              position: 'absolute',
+              opacity: 0,
+              width: '1px',
+              height: '1px',
+              pointerEvents: 'none'
+            }}
+            onKeyDown={(e) => {
+              const key = e.key.toLowerCase();
+              typedKeysRef.current += key;
+              
+              // Keep only last 6 characters
+              if (typedKeysRef.current.length > 6) {
+                typedKeysRef.current = typedKeysRef.current.slice(-6);
+              }
+
+              // Check if "pacman" was typed
+              if (typedKeysRef.current.includes('pacman')) {
+                setShowPacman(true);
+                typedKeysRef.current = '';
+                e.target.blur();
+              }
+            }}
+            autoComplete="off"
+            tabIndex={-1}
+          />
         </div>
       </div>
 

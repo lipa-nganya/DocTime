@@ -18,19 +18,58 @@ export default function CalendarPicker({ value, onChange, label, style }) {
           {label}
         </label>
       )}
-      <input
-        type="date"
-        value={value ? formatDateForInput(value) : ''}
-        onChange={(e) => {
-          if (e.target.value) {
-            const selectedDate = new Date(e.target.value + 'T00:00:00');
-            onChange(selectedDate);
-          } else {
-            onChange(null);
-          }
-        }}
-        className="calendar-picker-input"
-      />
+      <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: '300px' }}>
+        <input
+          type="date"
+          value={value ? formatDateForInput(value) : ''}
+          onChange={(e) => {
+            if (e.target.value) {
+              const selectedDate = new Date(e.target.value + 'T00:00:00');
+              onChange(selectedDate);
+            } else {
+              onChange(null);
+            }
+          }}
+          className="calendar-picker-input"
+          // Ensure calendar icon is visible on mobile devices
+          style={{ 
+            WebkitAppearance: 'none',
+            MozAppearance: 'textfield',
+            cursor: 'pointer'
+          }}
+          aria-label={label || "Select date"}
+        />
+        {/* Custom calendar icon overlay for better visibility */}
+        <span 
+          className="calendar-icon-overlay"
+          onClick={(e) => {
+            e.stopPropagation();
+            const input = e.target.parentElement.querySelector('.calendar-picker-input');
+            if (input) {
+              input.focus();
+              // Try to show native date picker if available
+              if (input.showPicker) {
+                input.showPicker();
+              }
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              const input = e.target.parentElement.querySelector('.calendar-picker-input');
+              if (input) {
+                input.focus();
+                if (input.showPicker) {
+                  input.showPicker();
+                }
+              }
+            }
+          }}
+          role="button"
+          aria-label="Open calendar"
+          tabIndex={0}
+        />
+      </div>
     </div>
   );
 }

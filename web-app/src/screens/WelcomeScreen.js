@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './WelcomeScreen.css';
 
 // Logo is in public folder, use public path
-const logo = '/logo.png';
+const logo = './logo.png';
 
 export default function WelcomeScreen() {
   const navigate = useNavigate();

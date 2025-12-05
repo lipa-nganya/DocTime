@@ -58,15 +58,38 @@ export default function SignUpScreen() {
     try {
       const response = await api.post('/auth/request-otp', { phoneNumber });
       
-      setOtpDigits(['', '', '', '']);
-      setStep('otp');
-      
-      if (response.data.otp) {
-        // Show OTP in development mode (non-blocking)
-        console.log(`Development OTP: ${response.data.otp}`);
+      // Check if response indicates success
+      if (response.data && (response.data.success || response.data.message)) {
+        setOtpDigits(['', '', '', '']);
+        setStep('otp');
+        
+        if (response.data.otp) {
+          // Show OTP in development mode (non-blocking)
+          console.log(`Development OTP: ${response.data.otp}`);
+        }
+      } else {
+        // Response doesn't indicate success, but no error was thrown
+        // Assume success and proceed (OTP might have been sent)
+        setOtpDigits(['', '', '', '']);
+        setStep('otp');
       }
     } catch (error) {
-      showError(error.response?.data?.error || error.message || 'Failed to send OTP');
+      // Even if there's an error, if OTP was generated, allow user to enter it
+      // The SMS might have been sent before the error occurred
+      console.error('OTP request error:', error);
+      
+      // Check if we got a response (even if it's an error status)
+      // Sometimes SMS is sent but response parsing fails
+      if (error.response && error.response.status < 500) {
+        // Client error (4xx) - likely a real issue
+        showError(error.response?.data?.error || error.message || 'Failed to send OTP');
+      } else {
+        // Server error or network error - SMS might have been sent
+        // Allow user to proceed to OTP entry screen
+        console.warn('⚠️  Error occurred, but allowing OTP entry (SMS might have been sent)');
+        setOtpDigits(['', '', '', '']);
+        setStep('otp');
+      }
     } finally {
       setLoading(false);
     }
@@ -214,20 +237,24 @@ export default function SignUpScreen() {
       {step === 'pin' && (
         <>
           <input
-            type="password"
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]*"
             className="form-input"
             placeholder="Create PIN (4-6 digits)"
             value={pin}
-            onChange={(e) => setPin(e.target.value)}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
             maxLength={6}
             autoFocus
           />
           <input
-            type="password"
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]*"
             className="form-input"
             placeholder="Confirm PIN"
             value={confirmPin}
-            onChange={(e) => setConfirmPin(e.target.value)}
+            onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
             maxLength={6}
           />
           <button

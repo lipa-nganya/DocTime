@@ -215,17 +215,42 @@ doc-time/
 
 ## Deployment
 
-### Backend
-Deploy to Google Cloud Run, Render, or similar platform. Update `DATABASE_URL` to production database.
+### Cloud Deployment (Recommended)
 
-### Mobile App
-Build and publish via Expo:
+See `cloud/DEPLOYMENT.md` for complete deployment guide.
+
+**Quick Start:**
 ```bash
-eas build --platform android --profile production
-eas submit --platform android
+cd cloud
+./deploy-cloud-sql.sh      # Deploy Cloud SQL database
+./deploy-backend.sh        # Deploy backend to Cloud Run
+./deploy-web-app.sh        # Deploy web app to Cloud Storage
+./deploy-admin.sh          # Deploy admin panel
 ```
 
-### Admin Panel
+**Cost-Saving Features:**
+- Cloud Run scales to zero when not in use
+- Optimized database connection pooling
+- Response compression (~70% bandwidth reduction)
+- Production logging (errors only)
+- Automatic temp file cleanup
+- Response caching for static data
+- Rate limiting to prevent abuse
+
+**Integration with Start/Stop Control Instances:**
+```bash
+./integrate-start-stop.sh  # Add Doc Time to existing start/stop scripts
+```
+
+### Manual Deployment
+
+#### Backend
+Deploy to Google Cloud Run, Render, or similar platform. Update `DATABASE_URL` to production database.
+
+#### Web App
+Deploy to Cloud Storage, Vercel, Netlify, or similar static hosting.
+
+#### Admin Panel
 Deploy to any static hosting service (Vercel, Netlify, etc.)
 
 ## License

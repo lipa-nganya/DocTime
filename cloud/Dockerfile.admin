@@ -1,0 +1,41 @@
+# Multi-stage Dockerfile for Doc Time Admin
+# Stage 1: Build the React app
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY admin-frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY admin-frontend/ ./
+
+# Build arguments for API URL
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
+# Build the app
+RUN npm run build
+
+# Stage 2: Serve with nginx
+FROM nginx:alpine
+
+# Copy built files from builder
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY cloud/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 8080 (Cloud Run requirement)
+EXPOSE 8080
+
+# Update nginx to listen on port 8080
+RUN sed -i 's/listen 80;/listen 8080;/g' /etc/nginx/conf.d/default.conf && \
+    sed -i 's/listen \[::\]:80;/listen [::]:8080;/g' /etc/nginx/conf.d/default.conf
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
+

@@ -4,13 +4,24 @@ import axios from 'axios';
 // Override with REACT_APP_API_URL environment variable for production
 const DEFAULT_API_URL = 'http://localhost:5001';
 const NGROK_URL = 'https://homiest-psychopharmacologic-anaya.ngrok-free.dev'; // Fallback if needed
-const apiBaseUrl = process.env.REACT_APP_API_URL || DEFAULT_API_URL;
+let apiBaseUrl = process.env.REACT_APP_API_URL || DEFAULT_API_URL;
+
+// Ensure apiBaseUrl doesn't already end with /api to avoid double /api/api/
+if (apiBaseUrl.endsWith('/api')) {
+  // Already has /api, use as is
+} else if (apiBaseUrl.endsWith('/')) {
+  // Ends with /, add api
+  apiBaseUrl = `${apiBaseUrl}api`;
+} else {
+  // Doesn't end with /api or /, add /api
+  apiBaseUrl = `${apiBaseUrl}/api`;
+}
 
 console.log('🔧 API Base URL:', apiBaseUrl);
-console.log('🔧 Using:', apiBaseUrl === DEFAULT_API_URL ? 'Local backend' : apiBaseUrl === NGROK_URL ? 'Ngrok (fallback)' : 'Custom URL');
+console.log('🔧 Using:', apiBaseUrl.includes('localhost') ? 'Local backend' : apiBaseUrl.includes('ngrok') ? 'Ngrok (fallback)' : 'Custom URL');
 
 const api = axios.create({
-  baseURL: `${apiBaseUrl}/api`,
+  baseURL: apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

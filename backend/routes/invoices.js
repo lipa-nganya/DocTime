@@ -5,6 +5,7 @@ const { Case, Facility, Payer, Procedure, User, CaseProcedure } = require('../mo
 const { authenticateToken } = require('./auth');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 
 router.use(authenticateToken);
 
@@ -14,7 +15,7 @@ router.use(authenticateToken);
 router.get('/:caseId/pdf', async (req, res) => {
   try {
     const caseId = req.params.caseId;
-    console.log(`📄 Generating invoice for case: ${caseId}, userId: ${req.userId}`);
+    logger.log(`📄 Generating invoice for case: ${caseId}, userId: ${req.userId}`);
     
     const caseItem = await Case.findByPk(caseId, {
       include: [
@@ -33,44 +34,44 @@ router.get('/:caseId/pdf', async (req, res) => {
     });
 
     if (!caseItem) {
-      console.log(`❌ Case not found: ${caseId}`);
+      logger.log(`❌ Case not found: ${caseId}`);
       return res.status(404).json({ error: 'Case not found' });
     }
     
     // Get singular procedure for backward compatibility if procedures array is empty
     try {
       if (!caseItem.procedures || caseItem.procedures.length === 0) {
-        console.log(`📝 No procedures found in association, checking procedureId: ${caseItem.procedureId}`);
-        if (caseItem.procedureId) {
-          const singleProcedure = await Procedure.findByPk(caseItem.procedureId);
-          if (singleProcedure) {
-            console.log(`✅ Found singular procedure: ${singleProcedure.name || singleProcedure.id}`);
-            caseItem.procedures = [singleProcedure];
-          } else {
-            console.log(`⚠️ Procedure with ID ${caseItem.procedureId} not found`);
+        logger.log(`📝 No procedures found in association, checking procedureId: ${caseItem.procedureId}`);
+          if (caseItem.procedureId) {
+            const singleProcedure = await Procedure.findByPk(caseItem.procedureId);
+            if (singleProcedure) {
+              logger.log(`✅ Found singular procedure: ${singleProcedure.name || singleProcedure.id}`);
+              caseItem.procedures = [singleProcedure];
+            } else {
+              logger.log(`⚠️ Procedure with ID ${caseItem.procedureId} not found`);
+            }
           }
+        } else {
+          logger.log(`✅ Found ${caseItem.procedures.length} procedure(s) in association`);
         }
-      } else {
-        console.log(`✅ Found ${caseItem.procedures.length} procedure(s) in association`);
-      }
     } catch (procError) {
-      console.error('❌ Error fetching singular procedure:', procError);
+      logger.error('❌ Error fetching singular procedure:', procError);
       // Continue without procedures - invoice can still be generated
     }
 
-    console.log(`✅ Case found: ${caseId}, status: ${caseItem.status}, userId: ${caseItem.userId}, req.userId: ${req.userId}`);
+    logger.log(`✅ Case found: ${caseId}, status: ${caseItem.status}, userId: ${caseItem.userId}, req.userId: ${req.userId}`);
 
     if (caseItem.userId !== req.userId) {
-      console.log(`❌ Unauthorized: Case userId (${caseItem.userId}) !== req.userId (${req.userId})`);
+      logger.log(`❌ Unauthorized: Case userId (${caseItem.userId}) !== req.userId (${req.userId})`);
       return res.status(403).json({ error: 'Not authorized' });
     }
 
     if (caseItem.status !== 'Completed') {
-      console.log(`❌ Case not completed: status is ${caseItem.status}`);
+      logger.log(`❌ Case not completed: status is ${caseItem.status}`);
       return res.status(400).json({ error: 'Can only generate invoice for completed cases' });
     }
     
-    console.log(`📝 Starting PDF generation for case: ${caseId}`);
+    logger.log(`📝 Starting PDF generation for case: ${caseId}`);
 
     // Create PDF with better margins
     const doc = new PDFDocument({ 
@@ -91,7 +92,7 @@ router.get('/:caseId/pdf', async (req, res) => {
     let headingFont = 'Helvetica-Bold';
     let bodyFont = 'Helvetica';
     
-    console.log('🔤 Font directory:', fontsDir);
+    logger.log('🔤 Font directory:', fontsDir);
     
     try {
       const robotoRegular = path.join(fontsDir, 'Roboto-Regular.ttf');
@@ -99,8 +100,8 @@ router.get('/:caseId/pdf', async (req, res) => {
       const latoRegular = path.join(fontsDir, 'Lato-Regular.ttf');
       const latoBold = path.join(fontsDir, 'Lato-Bold.ttf');
       
-      console.log('🔤 Checking fonts in:', fontsDir);
-      console.log('🔤 Font files exist:', {
+      logger.log('🔤 Checking fonts in:', fontsDir);
+      logger.log('🔤 Font files exist:', {
         robotoRegular: fs.existsSync(robotoRegular),
         robotoBold: fs.existsSync(robotoBold),
         latoRegular: fs.existsSync(latoRegular),
@@ -132,13 +133,13 @@ router.get('/:caseId/pdf', async (req, res) => {
           doc.registerFont('Roboto-Bold', robotoBold);
           // Test that the font actually works by trying to use it
           headingFont = 'Roboto-Bold';
-          console.log('✅ Roboto fonts registered successfully');
+          logger.log('✅ Roboto fonts registered successfully');
         } catch (regError) {
-          console.error('❌ Error registering Roboto fonts:', regError.message);
+          logger.error('❌ Error registering Roboto fonts:', regError.message);
           headingFont = 'Helvetica-Bold'; // Explicit fallback
         }
       } else {
-        console.warn('⚠️ Roboto fonts not found or invalid (may be HTML files), using Helvetica');
+        logger.warn('⚠️ Roboto fonts not found or invalid (may be HTML files), using Helvetica');
         headingFont = 'Helvetica-Bold'; // Explicit fallback
       }
       
@@ -166,18 +167,18 @@ router.get('/:caseId/pdf', async (req, res) => {
           doc.registerFont('Lato', latoRegular);
           doc.registerFont('Lato-Bold', latoBold);
           bodyFont = 'Lato';
-          console.log('✅ Lato fonts registered successfully');
+          logger.log('✅ Lato fonts registered successfully');
         } catch (regError) {
-          console.error('❌ Error registering Lato fonts:', regError.message);
+          logger.error('❌ Error registering Lato fonts:', regError.message);
           bodyFont = 'Helvetica'; // Explicit fallback
         }
       } else {
-        console.warn('⚠️ Lato fonts not found or invalid (may be HTML files), using Helvetica');
+        logger.warn('⚠️ Lato fonts not found or invalid (may be HTML files), using Helvetica');
         bodyFont = 'Helvetica'; // Explicit fallback
       }
     } catch (fontError) {
-      console.error('❌ Error in font registration block:', fontError.message);
-      console.error('Font error stack:', fontError.stack);
+      logger.error('❌ Error in font registration block:', fontError.message);
+      logger.error('Font error stack:', fontError.stack);
       // Ensure we always have valid fonts
       headingFont = 'Helvetica-Bold';
       bodyFont = 'Helvetica';
@@ -191,7 +192,7 @@ router.get('/:caseId/pdf', async (req, res) => {
       bodyFont = 'Helvetica';
     }
     
-    console.log(`📝 Using fonts - Heading: ${headingFont}, Body: ${bodyFont}`);
+    logger.log(`📝 Using fonts - Heading: ${headingFont}, Body: ${bodyFont}`);
 
     // Create write stream for PDF file
     const writeStream = fs.createWriteStream(filepath);
@@ -199,7 +200,7 @@ router.get('/:caseId/pdf', async (req, res) => {
     // Set up error handlers BEFORE piping
     const pdfPromise = new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        console.error('❌ PDF generation timeout after 30 seconds');
+        logger.error('❌ PDF generation timeout after 30 seconds');
         writeStream.destroy();
         if (fs.existsSync(filepath)) {
           try {
@@ -214,15 +215,15 @@ router.get('/:caseId/pdf', async (req, res) => {
       // Listen for write stream finish
       writeStream.on('finish', () => {
         clearTimeout(timeout);
-        console.log('✅ PDF file written successfully');
+        logger.log('✅ PDF file written successfully');
         resolve();
       });
       
       // Listen for write stream errors
       writeStream.on('error', (error) => {
         clearTimeout(timeout);
-        console.error('❌ Write stream error:', error);
-        console.error('Write stream error details:', {
+        logger.error('❌ Write stream error:', error);
+        logger.error('Write stream error details:', {
           message: error.message,
           stack: error.stack,
           code: error.code
@@ -233,8 +234,8 @@ router.get('/:caseId/pdf', async (req, res) => {
       // Listen for doc errors
       doc.on('error', (error) => {
         clearTimeout(timeout);
-        console.error('❌ PDF document error:', error);
-        console.error('PDF document error details:', {
+        logger.error('❌ PDF document error:', error);
+        logger.error('PDF document error details:', {
           message: error.message,
           stack: error.stack
         });
@@ -533,13 +534,13 @@ router.get('/:caseId/pdf', async (req, res) => {
        });
 
     // End the document (this triggers the pipe to write to file)
-    console.log('📝 Ending PDF document...');
+    logger.log('📝 Ending PDF document...');
     doc.end();
 
     // Wait for PDF to be generated (wait for write stream to finish)
-    console.log('⏳ Waiting for PDF file to be written...');
+    logger.log('⏳ Waiting for PDF file to be written...');
     await pdfPromise;
-    console.log('✅ PDF generation complete, file ready');
+    logger.log('✅ PDF generation complete, file ready');
 
     // Check if file exists before sending
     if (!fs.existsSync(filepath)) {
@@ -552,7 +553,7 @@ router.get('/:caseId/pdf', async (req, res) => {
     
     const fileStream = fs.createReadStream(filepath);
     fileStream.on('error', (error) => {
-      console.error('Error reading PDF file:', error);
+      logger.error('Error reading PDF file:', error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to read PDF file' });
       }
@@ -568,13 +569,13 @@ router.get('/:caseId/pdf', async (req, res) => {
             fs.unlinkSync(filepath);
           }
         } catch (cleanupError) {
-          console.error('Error cleaning up PDF file:', cleanupError);
+          logger.error('Error cleaning up PDF file:', cleanupError);
         }
       }, 5000);
     });
   } catch (error) {
-    console.error('❌ Error generating invoice:', error);
-    console.error('Error details:', {
+    logger.error('❌ Error generating invoice:', error);
+    logger.error('Error details:', {
       message: error.message,
       stack: error.stack,
       name: error.name,
@@ -586,7 +587,7 @@ router.get('/:caseId/pdf', async (req, res) => {
     
     // Handle Sequelize errors specifically
     if (error.name === 'SequelizeDatabaseError' || error.name === 'SequelizeValidationError') {
-      console.error('❌ Sequelize error:', error.original || error);
+      logger.error('❌ Sequelize error:', error.original || error);
     }
     
     // Return detailed error in development, generic in production
@@ -605,7 +606,7 @@ router.get('/:caseId/pdf', async (req, res) => {
         })
       });
     } else {
-      console.error('⚠️ Response already sent, cannot send error response');
+      logger.error('⚠️ Response already sent, cannot send error response');
     }
   }
 });

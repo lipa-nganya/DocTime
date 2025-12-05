@@ -1,0 +1,2 @@
+NODE_ENV=production
+DATABASE_URL=postgresql://doctime_user:P%2B4ZlObSHiOmtuqJuyJah0JLT3kOV%2Ft0Qk5OSr0wqfI%3D@/doctime?host=/cloudsql/drink-suite:us-central1:doctime-db

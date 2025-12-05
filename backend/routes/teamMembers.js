@@ -3,29 +3,40 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const { TeamMember, Role } = require('../models');
 const { authenticateToken } = require('./auth');
+const cache = require('../utils/cache');
+const logger = require('../utils/logger');
 
 router.use(authenticateToken);
 
 /**
- * Get team members by role
+ * Get team members by role (cached for 5 minutes to reduce database queries)
  */
 router.get('/', async (req, res) => {
   try {
     const { role } = req.query;
+    const cacheKey = `teamMembers:${role || 'all'}`;
+    let teamMembers = cache.get(cacheKey);
     
-    const where = {};
-    if (role) {
-      where.role = role;
-    }
+    if (!teamMembers) {
+      const where = {};
+      if (role) {
+        where.role = role;
+      }
 
-    const teamMembers = await TeamMember.findAll({
-      where,
-      order: [['name', 'ASC']]
-    });
+      teamMembers = await TeamMember.findAll({
+        where,
+        order: [['name', 'ASC']]
+      });
+      
+      // Cache for 5 minutes (team members rarely change)
+      cache.set(cacheKey, teamMembers, 5 * 60 * 1000);
+    }
     
+    // Set cache headers for client-side caching
+    res.set('Cache-Control', 'private, max-age=300'); // 5 minutes
     res.json({ success: true, teamMembers });
   } catch (error) {
-    console.error('Error fetching team members:', error);
+    logger.error('Error fetching team members:', error);
     res.status(500).json({ error: 'Failed to fetch team members' });
   }
 });
@@ -53,9 +64,14 @@ router.post('/', [
       phoneNumber
     });
 
+    // Clear cache when new team member is created
+    cache.clear('teamMembers:all');
+    if (teamMember.role) {
+      cache.clear(`teamMembers:${teamMember.role}`);
+    }
     res.status(201).json({ success: true, teamMember });
   } catch (error) {
-    console.error('Error creating team member:', error);
+    logger.error('Error creating team member:', error);
     res.status(500).json({ error: 'Failed to create team member' });
   }
 });
@@ -70,7 +86,7 @@ router.get('/roles', async (req, res) => {
     });
     res.json({ success: true, roles });
   } catch (error) {
-    console.error('Error fetching roles:', error);
+    logger.error('Error fetching roles:', error);
     res.status(500).json({ error: 'Failed to fetch roles' });
   }
 });

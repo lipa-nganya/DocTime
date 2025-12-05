@@ -2,6 +2,7 @@
   "name": "doctime-admin",
   "version": "1.0.0",
   "description": "Doc Time Admin Panel",
+  "homepage": ".",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",

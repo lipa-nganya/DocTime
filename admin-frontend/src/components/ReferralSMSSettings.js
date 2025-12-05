@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import AlertModal from './AlertModal';
+import { getApiBaseUrl } from '../services/environment';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+// Function to get the current API base URL (supports local/cloud switching)
+const getCurrentApiUrl = () => {
+  let url = process.env.REACT_APP_API_URL || getApiBaseUrl();
+  // Ensure URL ends with /api
+  if (!url.endsWith('/api')) {
+    if (url.endsWith('/')) {
+      url = `${url}api`;
+    } else {
+      url = `${url}/api`;
+    }
+  }
+  return url;
+};
 
 export default function ReferralSMSSettings() {
   const [settings, setSettings] = useState([]);
@@ -15,7 +28,7 @@ export default function ReferralSMSSettings() {
 
   const loadSettings = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/admin/settings`);
+      const response = await axios.get(`${getCurrentApiUrl()}/admin/settings`);
       setSettings(response.data.settings || []);
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -29,7 +42,7 @@ export default function ReferralSMSSettings() {
     const newValue = referralSmsSetting?.value === 'true' ? 'false' : 'true';
     
     try {
-      await axios.put(`${API_BASE_URL}/admin/settings/ENABLE_REFERRAL_SMS`, {
+      await axios.put(`${getCurrentApiUrl()}/admin/settings/ENABLE_REFERRAL_SMS`, {
         value: newValue,
         description: 'Enable/disable Referral SMS sending (cost savings during development)'
       });

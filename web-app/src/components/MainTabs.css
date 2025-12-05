@@ -43,6 +43,8 @@
   flex: 1;
   padding-bottom: 80px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .bottom-nav {
@@ -65,9 +67,10 @@
   align-items: center;
   text-decoration: none;
   color: #666666;
-  padding: 8px 16px;
+  padding: 8px 8px;
   transition: color 0.2s;
-  min-width: 60px;
+  min-width: 50px;
+  flex: 1;
 }
 
 .nav-item.active {
