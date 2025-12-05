@@ -4,6 +4,7 @@ import axios from 'axios';
 import LogsScreen from './screens/LogsScreen';
 import FacilitiesScreen from './screens/FacilitiesScreen';
 import PayersScreen from './screens/PayersScreen';
+import TeamMembersScreen from './screens/TeamMembersScreen';
 import AlertModal from './components/AlertModal';
 import { getApiBaseUrl } from './services/environment';
 import './App.css';
@@ -1098,6 +1099,7 @@ function App() {
           {/* <Link to="/roles">Roles</Link> */}
           <Link to="/facilities">Facilities</Link>
           <Link to="/payers">Payers</Link>
+          <Link to="/team-members">Team Members</Link>
           <Link to="/logs">Logs</Link>
           <Link to="/settings">Settings</Link>
         </nav>
@@ -1112,6 +1114,7 @@ function App() {
             {/* <Route path="/roles" element={<Roles />} /> */}
             <Route path="/facilities" element={<FacilitiesScreen />} />
             <Route path="/payers" element={<PayersScreen />} />
+            <Route path="/team-members" element={<TeamMembersScreen />} />
             <Route path="/logs" element={<LogsScreen />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
