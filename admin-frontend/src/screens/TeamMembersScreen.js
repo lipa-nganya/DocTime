@@ -161,11 +161,11 @@ export default function TeamMembersScreen() {
                   </span>
                 </td>
                 <td className="action-buttons">
-                  <button className="edit-button" onClick={() => handleEdit(member)}>
+                  <button className="btn btn-edit" onClick={() => handleEdit(member)}>
                     Edit
                   </button>
                   {!member.isSystemDefined && (
-                    <button className="delete-button" onClick={() => handleDelete(member)}>
+                    <button className="btn btn-delete" onClick={() => handleDelete(member)}>
                       Delete
                     </button>
                   )}
