@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+const { Sequelize } = require('sequelize');
+const { Op } = Sequelize;
 const { Facility } = require('../models');
 const { authenticateToken } = require('./auth');
 const cache = require('../utils/cache');
@@ -87,7 +89,7 @@ router.put('/:id', [
     const existing = await Facility.findOne({ 
       where: { 
         name,
-        id: { [require('sequelize').Op.ne]: id }
+        id: { [Op.ne]: id }
       } 
     });
     if (existing) {
