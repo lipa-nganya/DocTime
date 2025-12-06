@@ -52,24 +52,55 @@ export default function NewCaseScreen() {
 
   const loadData = async () => {
     try {
+      console.log('🔄 Loading facilities, payers, procedures, and team members...');
       const [facilitiesRes, payersRes, proceduresRes, teamMembersRes] = await Promise.all([
-        api.get('/facilities'),
-        api.get('/payers'),
-        api.get('/procedures'),
-        api.get('/team-members')
+        api.get('/facilities').catch(err => {
+          console.error('❌ Error loading facilities:', err);
+          return { data: { facilities: [] } };
+        }),
+        api.get('/payers').catch(err => {
+          console.error('❌ Error loading payers:', err);
+          return { data: { payers: [] } };
+        }),
+        api.get('/procedures').catch(err => {
+          console.error('❌ Error loading procedures:', err);
+          return { data: { procedures: [] } };
+        }),
+        api.get('/team-members').catch(err => {
+          console.error('❌ Error loading team members:', err);
+          return { data: { teamMembers: [] } };
+        })
       ]);
 
-      const facilitiesData = facilitiesRes.data.facilities || facilitiesRes.data.data?.facilities || [];
-      const payersData = payersRes.data.payers || payersRes.data.data?.payers || [];
-      const proceduresData = proceduresRes.data.procedures || proceduresRes.data.data?.procedures || [];
-      const members = teamMembersRes.data.teamMembers || teamMembersRes.data.teamMember || teamMembersRes.data.data?.teamMembers || [];
+      const facilitiesData = facilitiesRes.data?.facilities || facilitiesRes.data?.data?.facilities || [];
+      const payersData = payersRes.data?.payers || payersRes.data?.data?.payers || [];
+      const proceduresData = proceduresRes.data?.procedures || proceduresRes.data?.data?.procedures || [];
+      const members = teamMembersRes.data?.teamMembers || teamMembersRes.data?.teamMember || teamMembersRes.data?.data?.teamMembers || [];
+      
+      console.log('✅ Loaded data:', {
+        facilities: facilitiesData.length,
+        payers: payersData.length,
+        procedures: proceduresData.length,
+        teamMembers: members.length
+      });
       
       setFacilities(facilitiesData);
       setPayers(payersData);
       setProcedures(proceduresData);
       setTeamMembers(members);
+      
+      // Show error if any critical data failed to load
+      const errors = [];
+      if (facilitiesRes.data?.error) errors.push('facilities');
+      if (payersRes.data?.error) errors.push('payers');
+      if (proceduresRes.data?.error) errors.push('procedures');
+      if (teamMembersRes.data?.error) errors.push('team members');
+      
+      if (errors.length > 0) {
+        setAlertMessage(`Failed to load: ${errors.join(', ')}. Please refresh the page.`);
+      }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ Error loading data:', error);
       setAlertMessage(`Failed to load data: ${error.response?.data?.error || error.message}`);
     }
   };
@@ -418,7 +449,7 @@ export default function NewCaseScreen() {
               />
               <div className="scrollable-list">
                 {procedures.length === 0 ? (
-                  <p className="no-results-text">No procedures available. Add procedures in the admin app.</p>
+                  <p className="no-results-text">No procedures available. Add procedures in the admin app. (Loaded: {procedures.length})</p>
                 ) : filteredProcedures.length === 0 ? (
                   <div className="no-results-container">
                     <p className="no-results-text">

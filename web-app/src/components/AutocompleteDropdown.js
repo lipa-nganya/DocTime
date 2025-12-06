@@ -118,14 +118,8 @@ export default function AutocompleteDropdown({
     return labelLower.includes(searchLower);
   });
 
-  if (options.length === 0) {
-    return (
-      <div className="autocomplete-dropdown-container">
-        {label && <label className="autocomplete-dropdown-label">{label}</label>}
-        <p className="empty-state-text">{emptyMessage || 'No options available'}</p>
-      </div>
-    );
-  }
+  // Always render the input field, even if options are empty
+  // This allows the user to see the field and type to search/create new items
 
   return (
     <div className="autocomplete-dropdown-container" ref={dropdownRef}>
@@ -167,7 +161,9 @@ export default function AutocompleteDropdown({
           >
             {filteredOptions.length === 0 ? (
               <div className="autocomplete-no-results">
-                {searchQuery.trim() && onCreateNew ? (
+                {options.length === 0 ? (
+                  <span>{emptyMessage || 'No options available. Start typing to create a new item.'}</span>
+                ) : searchQuery.trim() && onCreateNew ? (
                   <div className="autocomplete-create-new">
                     <span>No matches found for "{searchQuery}"</span>
                     <button
@@ -187,7 +183,7 @@ export default function AutocompleteDropdown({
                     </button>
                   </div>
                 ) : (
-                  <span>No matches found for "{searchQuery}"</span>
+                  <span>{searchQuery.trim() ? `No matches found for "${searchQuery}"` : (emptyMessage || 'No options available')}</span>
                 )}
               </div>
             ) : (
