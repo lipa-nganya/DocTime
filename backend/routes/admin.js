@@ -8,6 +8,7 @@ const { authenticateToken } = require('./auth');
 const { Op } = require('sequelize');
 const { Sequelize } = require('sequelize');
 const { logActivity, getIpAddress, getUserAgent } = require('../utils/activityLogger');
+const logger = require('../utils/logger');
 
 // Configure multer for CSV file uploads
 const upload = multer({
@@ -495,6 +496,17 @@ router.delete('/cases/bulk', async (req, res) => {
  */
 router.put('/cases/:id', async (req, res) => {
   try {
+    logger.info('🔄 Admin case update request:', {
+      caseId: req.params.id,
+      body: req.body,
+      procedureIds: req.body.procedureIds,
+      teamMemberIds: req.body.teamMemberIds,
+      procedureIdsType: typeof req.body.procedureIds,
+      teamMemberIdsType: typeof req.body.teamMemberIds,
+      isArrayProcedureIds: Array.isArray(req.body.procedureIds),
+      isArrayTeamMemberIds: Array.isArray(req.body.teamMemberIds)
+    });
+    
     const caseItem = await Case.findByPk(req.params.id, {
       include: [
         { model: Facility, as: 'facility' },
@@ -643,7 +655,7 @@ router.put('/cases/:id', async (req, res) => {
       metadata: {
         caseId: caseItem.id,
         oldData,
-        newData: { ...updateData, procedureIds: finalProcedureIds, teamMemberIds },
+        newData: { ...updateData, procedureIds: normalizedProcedureIds, teamMemberIds: normalizedTeamMemberIds },
         updatedBy: 'admin'
       },
       ipAddress: getIpAddress(req),
@@ -657,8 +669,17 @@ router.put('/cases/:id', async (req, res) => {
       console.log(`Case ${caseItem.id} updated by admin. Notify user ${user.phoneNumber}`);
     }
 
+    logger.info('✅ Case updated successfully:', caseItem.id);
     res.json({ success: true, case: updatedCase });
   } catch (error) {
+    logger.error('❌ Error updating case:', {
+      error: error.message,
+      stack: error.stack,
+      caseId: req.params.id,
+      body: req.body,
+      procedureIds: req.body.procedureIds,
+      teamMemberIds: req.body.teamMemberIds
+    });
     console.error('Error updating case:', error);
     console.error('Error stack:', error.stack);
     console.error('Request body:', JSON.stringify(req.body, null, 2));
