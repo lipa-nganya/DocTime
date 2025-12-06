@@ -969,8 +969,8 @@ router.post('/bulk-import-cases', async (req, res) => {
         const status = getCaseStatus(dateOfProcedure);
         const isDatePassed = status === 'Completed';
         
-        // Create case - build object without procedureId if no procedures
-        const caseData = {
+        // Create case (match pattern from routes/cases.js)
+        const newCase = await Case.create({
           userId: user.id,
           dateOfProcedure: dateOfProcedure,
           patientName: row['Patient Name'] || 'Unknown',
@@ -979,20 +979,14 @@ router.post('/bulk-import-cases', async (req, res) => {
           facilityId: facility?.id || null,
           payerId: payer?.id || null,
           invoiceNumber: row['Invoice Number'] || null,
+          procedureId: procedures.length > 0 ? procedures[0].id : null, // Keep first procedure for backward compatibility
           amount: parseAmount(row['Amount (without a comma)']),
           paymentStatus: parsePaymentStatus(row['Paid']),
           additionalNotes: row['Additional Notes/Comments'] || null,
           status: status,
           isAutoCompleted: isDatePassed,
           completedAt: isDatePassed ? dateOfProcedure : null
-        };
-        
-        // Only add procedureId if we have procedures (for backward compatibility)
-        if (procedures.length > 0) {
-          caseData.procedureId = procedures[0].id;
-        }
-        
-        const newCase = await Case.create(caseData);
+        });
         
         // Add procedures
         for (const procedure of procedures) {
