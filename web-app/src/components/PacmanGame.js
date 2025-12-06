@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import AlertModal from './AlertModal';
 import './PacmanGame.css';
 
 export default function PacmanGame({ onClose }) {
@@ -9,6 +10,7 @@ export default function PacmanGame({ onClose }) {
     const saved = localStorage.getItem('pacmanHighScore');
     return saved ? parseInt(saved, 10) : 0;
   });
+  const [gameOverMessage, setGameOverMessage] = useState(null);
   const gameRef = useRef(null);
 
   const levelRef = useRef(level);
@@ -291,8 +293,7 @@ export default function PacmanGame({ onClose }) {
           `Goal: Eat all pellets without getting caught by the ghosts!`;
         
         setTimeout(() => {
-          alert(message);
-          onClose();
+          setGameOverMessage(message);
         }, 100);
         return;
       }
