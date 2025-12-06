@@ -304,12 +304,140 @@ function Cases() {
   const [deleting, setDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const casesPerPage = 10;
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    userId: '',
+    dateOfProcedure: new Date().toISOString().split('T')[0],
+    patientName: '',
+    inpatientNumber: '',
+    patientAge: '',
+    facilityId: '',
+    payerId: '',
+    invoiceNumber: '',
+    procedureIds: [],
+    teamMemberIds: [],
+    amount: '',
+    paymentStatus: 'Pending',
+    status: 'Upcoming',
+    additionalNotes: ''
+  });
+  const [facilities, setFacilities] = useState([]);
+  const [payers, setPayers] = useState([]);
+  const [procedures, setProcedures] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loadingCreateData, setLoadingCreateData] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     loadCases();
     loadUsers();
     setCurrentPage(1); // Reset to page 1 when switching tabs
   }, [activeTab]);
+
+  const loadCreateData = async (userId) => {
+    if (!userId) {
+      setFacilities([]);
+      setPayers([]);
+      setProcedures([]);
+      setTeamMembers([]);
+      return;
+    }
+
+    setLoadingCreateData(true);
+    try {
+      const [facilitiesRes, payersRes, proceduresRes, teamMembersRes] = await Promise.all([
+        axios.get(`${getCurrentApiUrl()}/facilities`),
+        axios.get(`${getCurrentApiUrl()}/payers`),
+        axios.get(`${getCurrentApiUrl()}/procedures`),
+        axios.get(`${getCurrentApiUrl()}/team-members`)
+      ]);
+
+      setFacilities(facilitiesRes.data.facilities || facilitiesRes.data.data?.facilities || []);
+      setPayers(payersRes.data.payers || payersRes.data.data?.payers || []);
+      setProcedures(proceduresRes.data.procedures || proceduresRes.data.data?.procedures || []);
+      const members = teamMembersRes.data.teamMembers || teamMembersRes.data.teamMember || teamMembersRes.data.data?.teamMembers || [];
+      // Filter team members for the selected user
+      const userMembers = members.filter(m => m.userId === userId);
+      setTeamMembers(userMembers);
+    } catch (error) {
+      console.error('Error loading create data:', error);
+    } finally {
+      setLoadingCreateData(false);
+    }
+  };
+
+  const handleCreateCase = () => {
+    setShowCreateModal(true);
+    setCreateForm({
+      userId: '',
+      dateOfProcedure: new Date().toISOString().split('T')[0],
+      patientName: '',
+      inpatientNumber: '',
+      patientAge: '',
+      facilityId: '',
+      payerId: '',
+      invoiceNumber: '',
+      procedureIds: [],
+      teamMemberIds: [],
+      amount: '',
+      paymentStatus: 'Pending',
+      status: 'Upcoming',
+      additionalNotes: ''
+    });
+    setFacilities([]);
+    setPayers([]);
+    setProcedures([]);
+    setTeamMembers([]);
+  };
+
+  const handleCancelCreate = () => {
+    setShowCreateModal(false);
+    setCreateForm({
+      userId: '',
+      dateOfProcedure: new Date().toISOString().split('T')[0],
+      patientName: '',
+      inpatientNumber: '',
+      patientAge: '',
+      facilityId: '',
+      payerId: '',
+      invoiceNumber: '',
+      procedureIds: [],
+      teamMemberIds: [],
+      amount: '',
+      paymentStatus: 'Pending',
+      status: 'Upcoming',
+      additionalNotes: ''
+    });
+  };
+
+  const handleSaveCreate = async () => {
+    if (!createForm.userId) {
+      setAlertMessage('Please select a user');
+      return;
+    }
+    if (!createForm.patientName) {
+      setAlertMessage('Patient name is required');
+      return;
+    }
+    if (!createForm.dateOfProcedure) {
+      setAlertMessage('Date of procedure is required');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      await axios.post(`${getCurrentApiUrl()}/admin/cases`, createForm);
+      setShowCreateModal(false);
+      setAlertMessage('Case created successfully');
+      loadCases();
+      handleCancelCreate();
+    } catch (error) {
+      console.error('Error creating case:', error);
+      setAlertMessage(error.response?.data?.error || 'Failed to create case');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -519,7 +647,15 @@ function Cases() {
     <div className="cases">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2>Cases</h2>
-        {selectedCases.length > 0 && (
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button 
+            className="btn btn-primary"
+            onClick={handleCreateCase}
+            style={{ marginRight: selectedCases.length > 0 ? '10px' : '0' }}
+          >
+            Create Case
+          </button>
+          {selectedCases.length > 0 && (
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <span>{selectedCases.length} case(s) selected</span>
             <button 
@@ -540,8 +676,8 @@ function Cases() {
             >
               Clear Selection
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <div className="tabs">
         <button 
@@ -647,6 +783,186 @@ function Cases() {
             <div className="edit-actions">
               <button onClick={handleSaveEdit}>Save</button>
               <button onClick={handleCancelEdit}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <div className="edit-modal">
+          <div className="edit-modal-content" style={{ maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3>Create New Case</h3>
+            <div className="edit-form">
+              <label>
+                User (Case Owner): *
+                <select
+                  value={createForm.userId}
+                  onChange={(e) => {
+                    setCreateForm({...createForm, userId: e.target.value});
+                    loadCreateData(e.target.value);
+                  }}
+                  required
+                >
+                  <option value="">-- Select User --</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.phoneNumber} {user.prefix ? `(${user.prefix} ${user.preferredName || ''})`.trim() : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Patient Name: *
+                <input
+                  type="text"
+                  value={createForm.patientName}
+                  onChange={(e) => setCreateForm({...createForm, patientName: e.target.value})}
+                  required
+                />
+              </label>
+              <label>
+                Date of Procedure: *
+                <input
+                  type="date"
+                  value={createForm.dateOfProcedure}
+                  onChange={(e) => setCreateForm({...createForm, dateOfProcedure: e.target.value})}
+                  required
+                />
+              </label>
+              <label>
+                Patient Age:
+                <input
+                  type="number"
+                  value={createForm.patientAge}
+                  onChange={(e) => setCreateForm({...createForm, patientAge: e.target.value})}
+                />
+              </label>
+              <label>
+                In-patient Number:
+                <input
+                  type="text"
+                  value={createForm.inpatientNumber}
+                  onChange={(e) => setCreateForm({...createForm, inpatientNumber: e.target.value})}
+                />
+              </label>
+              <label>
+                Facility:
+                <select
+                  value={createForm.facilityId}
+                  onChange={(e) => setCreateForm({...createForm, facilityId: e.target.value})}
+                >
+                  <option value="">-- Select Facility --</option>
+                  {facilities.map(facility => (
+                    <option key={facility.id} value={facility.id}>{facility.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Payer:
+                <select
+                  value={createForm.payerId}
+                  onChange={(e) => setCreateForm({...createForm, payerId: e.target.value})}
+                >
+                  <option value="">-- Select Payer --</option>
+                  {payers.map(payer => (
+                    <option key={payer.id} value={payer.id}>{payer.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Procedures:
+                <select
+                  multiple
+                  value={createForm.procedureIds}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions, option => option.value);
+                    setCreateForm({...createForm, procedureIds: selected});
+                  }}
+                  style={{ minHeight: '100px' }}
+                >
+                  {procedures.map(procedure => (
+                    <option key={procedure.id} value={procedure.id}>{procedure.name}</option>
+                  ))}
+                </select>
+                <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+                  Hold Ctrl/Cmd to select multiple
+                </small>
+              </label>
+              <label>
+                Team Members:
+                <select
+                  multiple
+                  value={createForm.teamMemberIds}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions, option => option.value);
+                    setCreateForm({...createForm, teamMemberIds: selected});
+                  }}
+                  style={{ minHeight: '100px' }}
+                >
+                  {teamMembers.map(member => (
+                    <option key={member.id} value={member.id}>{member.name} ({member.role})</option>
+                  ))}
+                </select>
+                <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+                  Hold Ctrl/Cmd to select multiple
+                </small>
+              </label>
+              <label>
+                Invoice Number:
+                <input
+                  type="text"
+                  value={createForm.invoiceNumber}
+                  onChange={(e) => setCreateForm({...createForm, invoiceNumber: e.target.value})}
+                />
+              </label>
+              <label>
+                Amount:
+                <input
+                  type="number"
+                  step="0.01"
+                  value={createForm.amount}
+                  onChange={(e) => setCreateForm({...createForm, amount: e.target.value})}
+                />
+              </label>
+              <label>
+                Payment Status:
+                <select
+                  value={createForm.paymentStatus}
+                  onChange={(e) => setCreateForm({...createForm, paymentStatus: e.target.value})}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Partially Paid">Partially Paid</option>
+                  <option value="Pro Bono">Pro Bono</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </label>
+              <label>
+                Status:
+                <select
+                  value={createForm.status}
+                  onChange={(e) => setCreateForm({...createForm, status: e.target.value})}
+                >
+                  <option value="Upcoming">Upcoming</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                  <option value="Referred">Referred</option>
+                </select>
+              </label>
+              <label>
+                Additional Notes:
+                <textarea
+                  value={createForm.additionalNotes}
+                  onChange={(e) => setCreateForm({...createForm, additionalNotes: e.target.value})}
+                  rows={4}
+                />
+              </label>
+            </div>
+            <div className="edit-actions">
+              <button onClick={handleSaveCreate} disabled={creating}>
+                {creating ? 'Creating...' : 'Create Case'}
+              </button>
+              <button onClick={handleCancelCreate} disabled={creating}>Cancel</button>
             </div>
           </div>
         </div>

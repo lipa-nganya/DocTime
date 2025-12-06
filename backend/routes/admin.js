@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, Case, Referral, Role, TeamMember, Settings, Facility, Payer, ActivityLog } = require('../models');
+const { User, Case, Referral, Role, TeamMember, Settings, Facility, Payer, Procedure, CaseTeamMember, CaseProcedure, ActivityLog } = require('../models');
 const { authenticateToken } = require('./auth');
 const { Op } = require('sequelize');
 const { Sequelize } = require('sequelize');
@@ -171,6 +171,148 @@ router.get('/cancelled-cases', async (req, res) => {
   } catch (error) {
     console.error('Error fetching cancelled cases:', error);
     res.status(500).json({ error: 'Failed to fetch cancelled cases' });
+  }
+});
+
+/**
+ * Create a case for a user (admin only)
+ */
+router.post('/cases', async (req, res) => {
+  try {
+    const {
+      userId,
+      dateOfProcedure,
+      teamMemberIds = [],
+      procedureIds = [],
+      patientName,
+      inpatientNumber,
+      patientAge,
+      facilityId,
+      payerId,
+      invoiceNumber,
+      procedureId, // Keep for backward compatibility
+      amount,
+      paymentStatus,
+      additionalNotes,
+      status
+    } = req.body;
+
+    // Validate required fields
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    if (!dateOfProcedure) {
+      return res.status(400).json({ error: 'Date of procedure is required' });
+    }
+    if (!patientName) {
+      return res.status(400).json({ error: 'Patient name is required' });
+    }
+
+    // Verify user exists
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Support both procedureIds array and procedureId single value (backward compatibility)
+    const finalProcedureIds = procedureIds.length > 0 ? procedureIds : (procedureId ? [procedureId] : []);
+
+    // Find facility
+    let facility = null;
+    if (facilityId) {
+      facility = await Facility.findByPk(facilityId);
+    }
+
+    // Determine status
+    let caseStatus = status;
+    if (!caseStatus) {
+      const procedureDate = new Date(dateOfProcedure);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      procedureDate.setHours(0, 0, 0, 0);
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      caseStatus = procedureDate < endOfToday ? 'Completed' : 'Upcoming';
+    }
+    const isDatePassed = caseStatus === 'Completed';
+
+    // Create case
+    const newCase = await Case.create({
+      userId: userId,
+      dateOfProcedure: new Date(dateOfProcedure),
+      patientName,
+      inpatientNumber,
+      patientAge: patientAge ? parseInt(patientAge) : null,
+      facilityId: facility?.id || null,
+      payerId: payerId || null,
+      invoiceNumber,
+      procedureId: finalProcedureIds.length > 0 ? finalProcedureIds[0] : null,
+      amount: amount ? parseFloat(amount) : null,
+      paymentStatus: paymentStatus || 'Pending',
+      additionalNotes,
+      status: caseStatus,
+      isAutoCompleted: isDatePassed,
+      completedAt: isDatePassed ? new Date() : null
+    });
+
+    // Add team members
+    if (teamMemberIds && teamMemberIds.length > 0) {
+      for (const teamMemberId of teamMemberIds) {
+        await CaseTeamMember.create({
+          caseId: newCase.id,
+          teamMemberId
+        });
+      }
+    }
+
+    // Add procedures
+    if (finalProcedureIds && finalProcedureIds.length > 0) {
+      for (const procId of finalProcedureIds) {
+        await CaseProcedure.create({
+          caseId: newCase.id,
+          procedureId: procId
+        });
+      }
+    }
+
+    // Fetch created case with relations
+    const caseWithRelations = await Case.findByPk(newCase.id, {
+      include: [
+        { model: Facility, as: 'facility' },
+        { model: Payer, as: 'payer' },
+        { model: Procedure, as: 'procedure' },
+        { 
+          model: TeamMember, 
+          as: 'teamMembers',
+          through: { attributes: [] }
+        },
+        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'prefix', 'preferredName'] }
+      ]
+    });
+
+    // Log activity
+    await logActivity({
+      userId: userId,
+      action: 'CREATE_CASE_ADMIN',
+      entityType: 'Case',
+      entityId: newCase.id,
+      description: `Admin created case for patient "${patientName}"`,
+      metadata: {
+        caseId: newCase.id,
+        patientName,
+        createdBy: 'admin'
+      },
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req)
+    });
+
+    res.status(201).json({
+      success: true,
+      case: caseWithRelations
+    });
+  } catch (error) {
+    console.error('Error creating case (admin):', error);
+    res.status(500).json({ error: 'Failed to create case', message: error.message });
   }
 });
 
