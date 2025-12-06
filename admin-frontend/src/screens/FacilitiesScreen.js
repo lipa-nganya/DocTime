@@ -31,7 +31,14 @@ export default function FacilitiesScreen() {
 
   const loadFacilities = async () => {
     try {
-      const response = await axios.get(`${getCurrentApiUrl()}/facilities`);
+      // Add cache-busting parameter to avoid browser cache
+      const response = await axios.get(`${getCurrentApiUrl()}/facilities`, {
+        params: { _t: Date.now() },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       setFacilities(response.data.facilities || []);
     } catch (error) {
       console.error('Error loading facilities:', error);
@@ -59,12 +66,13 @@ export default function FacilitiesScreen() {
     }
 
     setDeletingId(id);
+    const idStr = String(id); // Ensure consistent string comparison
     try {
       await axios.delete(`${getCurrentApiUrl()}/facilities/${id}`);
-      // Optimistically update the state by removing the deleted facility
-      setFacilities(prevFacilities => prevFacilities.filter(f => f.id !== id));
+      // Optimistically update the state by removing the deleted facility immediately
+      setFacilities(prevFacilities => prevFacilities.filter(f => String(f.id) !== idStr));
       setAlertMessage('Facility deleted successfully');
-      // Reload to ensure consistency
+      // Reload with cache-busting to ensure consistency
       await loadFacilities();
     } catch (error) {
       console.error('Error deleting facility:', error);

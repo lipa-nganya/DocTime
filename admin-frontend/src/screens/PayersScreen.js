@@ -31,7 +31,14 @@ export default function PayersScreen() {
 
   const loadPayers = async () => {
     try {
-      const response = await axios.get(`${getCurrentApiUrl()}/payers`);
+      // Add cache-busting parameter to avoid browser cache
+      const response = await axios.get(`${getCurrentApiUrl()}/payers`, {
+        params: { _t: Date.now() },
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       setPayers(response.data.payers || []);
     } catch (error) {
       console.error('Error loading payers:', error);
@@ -59,12 +66,13 @@ export default function PayersScreen() {
     }
 
     setDeletingId(id);
+    const idStr = String(id); // Ensure consistent string comparison
     try {
       await axios.delete(`${getCurrentApiUrl()}/payers/${id}`);
-      // Optimistically update the state by removing the deleted payer
-      setPayers(prevPayers => prevPayers.filter(p => p.id !== id));
+      // Optimistically update the state by removing the deleted payer immediately
+      setPayers(prevPayers => prevPayers.filter(p => String(p.id) !== idStr));
       setAlertMessage('Payer deleted successfully');
-      // Reload to ensure consistency
+      // Reload with cache-busting to ensure consistency
       await loadPayers();
     } catch (error) {
       console.error('Error deleting payer:', error);
