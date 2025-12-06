@@ -223,18 +223,20 @@ router.post('/cases', async (req, res) => {
       facility = await Facility.findByPk(facilityId);
     }
 
-    // Determine status
+    // Determine status - auto-complete cases with past dates
     let caseStatus = status;
-    if (!caseStatus) {
-      const procedureDate = new Date(dateOfProcedure);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      procedureDate.setHours(0, 0, 0, 0);
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
-      caseStatus = procedureDate < endOfToday ? 'Completed' : 'Upcoming';
+    const procedureDate = new Date(dateOfProcedure);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    procedureDate.setHours(0, 0, 0, 0);
+    
+    // If date is in the past (before today), auto-complete the case
+    const isDatePassed = procedureDate < today;
+    
+    // Override status if date has passed (unless explicitly set to something else)
+    if (!caseStatus || (isDatePassed && caseStatus === 'Upcoming')) {
+      caseStatus = isDatePassed ? 'Completed' : (caseStatus || 'Upcoming');
     }
-    const isDatePassed = caseStatus === 'Completed';
 
     // Create case
     const newCase = await Case.create({
@@ -433,12 +435,37 @@ router.delete('/cases/bulk', async (req, res) => {
  */
 router.put('/cases/:id', async (req, res) => {
   try {
-    const caseItem = await Case.findByPk(req.params.id);
+    const caseItem = await Case.findByPk(req.params.id, {
+      include: [
+        { model: Facility, as: 'facility' },
+        { model: Payer, as: 'payer' },
+        { model: Procedure, as: 'procedure' },
+        { 
+          model: TeamMember, 
+          as: 'teamMembers',
+          through: { attributes: [] }
+        },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        }
+      ]
+    });
     if (!caseItem) {
       return res.status(404).json({ error: 'Case not found' });
     }
 
-    const updateData = { ...req.body };
+    const {
+      facilityId,
+      payerId,
+      procedureIds = [],
+      teamMemberIds = [],
+      invoiceNumber,
+      ...otherFields
+    } = req.body;
+
+    const updateData = { ...otherFields };
     
     // Handle date conversion
     if (updateData.dateOfProcedure) {
@@ -453,29 +480,81 @@ router.put('/cases/:id', async (req, res) => {
       updateData.amount = parseFloat(updateData.amount);
     }
 
+    // Update facility, payer, invoice number
+    if (facilityId !== undefined) {
+      updateData.facilityId = facilityId || null;
+    }
+    if (payerId !== undefined) {
+      updateData.payerId = payerId || null;
+    }
+    if (invoiceNumber !== undefined) {
+      updateData.invoiceNumber = invoiceNumber || null;
+    }
+
+    // Support both procedureIds array and procedureId single value (backward compatibility)
+    const finalProcedureIds = procedureIds.length > 0 ? procedureIds : (otherFields.procedureId ? [otherFields.procedureId] : []);
+    if (finalProcedureIds.length > 0) {
+      updateData.procedureId = finalProcedureIds[0]; // Keep first procedure for backward compatibility
+    }
+
     const oldData = { ...caseItem.toJSON() };
     await caseItem.update(updateData);
+
+    // Update team member associations
+    if (teamMemberIds !== undefined) {
+      await CaseTeamMember.destroy({ where: { caseId: caseItem.id } });
+      if (teamMemberIds.length > 0) {
+        for (const teamMemberId of teamMemberIds) {
+          await CaseTeamMember.create({
+            caseId: caseItem.id,
+            teamMemberId
+          });
+        }
+      }
+    }
+
+    // Update procedure associations
+    if (finalProcedureIds.length > 0) {
+      await CaseProcedure.destroy({ where: { caseId: caseItem.id } });
+      for (const procId of finalProcedureIds) {
+        await CaseProcedure.create({
+          caseId: caseItem.id,
+          procedureId: procId
+        });
+      }
+    }
 
     // Reload case with associations
     const updatedCase = await Case.findByPk(caseItem.id, {
       include: [
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
-        { model: require('../models').Facility, as: 'facility' },
-        { model: require('../models').Procedure, as: 'procedure' }
+        { model: Facility, as: 'facility' },
+        { model: Payer, as: 'payer' },
+        { model: Procedure, as: 'procedure' },
+        { 
+          model: TeamMember, 
+          as: 'teamMembers',
+          through: { attributes: [] }
+        },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        }
       ]
     });
 
     // Log activity (admin update)
     await logActivity({
       userId: req.userId || null, // Admin might not have userId, use null if not available
-      action: 'UPDATE_CASE',
+      action: 'UPDATE_CASE_ADMIN',
       entityType: 'Case',
       entityId: caseItem.id,
       description: `Admin updated case for patient "${caseItem.patientName}"`,
       metadata: {
         caseId: caseItem.id,
         oldData,
-        newData: updateData,
+        newData: { ...updateData, procedureIds: finalProcedureIds, teamMemberIds },
         updatedBy: 'admin'
       },
       ipAddress: getIpAddress(req),

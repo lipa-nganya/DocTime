@@ -51,12 +51,13 @@ router.post('/', [
       facility = await Facility.findByPk(facilityId);
     }
 
-    // Check if date has passed
+    // Check if date has passed - auto-complete cases with past dates
     const procedureDate = new Date(dateOfProcedure);
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
     procedureDate.setHours(0, 0, 0, 0);
     
+    // If date is in the past (before today), auto-complete the case
     const isDatePassed = procedureDate < today;
     const initialStatus = isDatePassed ? 'Completed' : 'Upcoming';
 

@@ -518,18 +518,57 @@ function Cases() {
     }
   };
 
-  const handleEdit = (caseItem) => {
+  const handleEdit = async (caseItem) => {
     setEditingCase(caseItem);
+    
+    // Extract procedure IDs and team member IDs from associations
+    const procedureIds = caseItem.procedures?.map(p => p.id.toString()) || 
+                         (caseItem.procedure?.id ? [caseItem.procedure.id.toString()] : []);
+    const teamMemberIds = caseItem.teamMembers?.map(m => m.id.toString()) || [];
+    
     setEditForm({
       patientName: caseItem.patientName || '',
       dateOfProcedure: caseItem.dateOfProcedure ? new Date(caseItem.dateOfProcedure).toISOString().split('T')[0] : '',
       patientAge: caseItem.patientAge || '',
       inpatientNumber: caseItem.inpatientNumber || '',
+      facilityId: caseItem.facilityId || caseItem.facility?.id || '',
+      payerId: caseItem.payerId || caseItem.payer?.id || '',
+      invoiceNumber: caseItem.invoiceNumber || '',
+      procedureIds: procedureIds,
+      teamMemberIds: teamMemberIds,
       amount: caseItem.amount || '',
       paymentStatus: caseItem.paymentStatus || 'Pending',
       additionalNotes: caseItem.additionalNotes || '',
       status: caseItem.status || 'Upcoming'
     });
+    
+    // Load facilities, payers, procedures, and team members for the case owner
+    await loadEditData(caseItem.userId || caseItem.user?.id);
+  };
+
+  // Load data for editing (facilities, payers, procedures, team members)
+  const loadEditData = async (userId) => {
+    setLoadingCreateData(true);
+    try {
+      const [facilitiesRes, payersRes, proceduresRes, teamMembersRes] = await Promise.all([
+        axios.get(`${getCurrentApiUrl()}/facilities`),
+        axios.get(`${getCurrentApiUrl()}/payers`),
+        axios.get(`${getCurrentApiUrl()}/procedures`),
+        axios.get(`${getCurrentApiUrl()}/team-members`)
+      ]);
+
+      setFacilities(facilitiesRes.data.facilities || facilitiesRes.data.data?.facilities || []);
+      setPayers(payersRes.data.payers || payersRes.data.data?.payers || []);
+      setProcedures(proceduresRes.data.procedures || proceduresRes.data.data?.procedures || []);
+      const members = teamMembersRes.data.teamMembers || teamMembersRes.data.teamMember || teamMembersRes.data.data?.teamMembers || [];
+      // Filter team members for the case owner
+      const userMembers = userId ? members.filter(m => m.userId === userId) : members;
+      setTeamMembers(userMembers);
+    } catch (error) {
+      console.error('Error loading edit data:', error);
+    } finally {
+      setLoadingCreateData(false);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -714,23 +753,25 @@ function Cases() {
 
       {editingCase && (
         <div className="edit-modal">
-          <div className="edit-modal-content">
+          <div className="edit-modal-content" style={{ maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3>Edit Case</h3>
             <div className="edit-form">
               <label>
-                Patient Name:
+                Patient Name: *
                 <input
                   type="text"
                   value={editForm.patientName}
                   onChange={(e) => setEditForm({...editForm, patientName: e.target.value})}
+                  required
                 />
               </label>
               <label>
-                Date of Procedure:
+                Date of Procedure: *
                 <input
                   type="date"
                   value={editForm.dateOfProcedure}
                   onChange={(e) => setEditForm({...editForm, dateOfProcedure: e.target.value})}
+                  required
                 />
               </label>
               <label>
@@ -747,6 +788,76 @@ function Cases() {
                   type="text"
                   value={editForm.inpatientNumber}
                   onChange={(e) => setEditForm({...editForm, inpatientNumber: e.target.value})}
+                />
+              </label>
+              <label>
+                Facility:
+                <select
+                  value={editForm.facilityId}
+                  onChange={(e) => setEditForm({...editForm, facilityId: e.target.value})}
+                >
+                  <option value="">-- Select Facility --</option>
+                  {facilities.map(facility => (
+                    <option key={facility.id} value={facility.id}>{facility.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Payer:
+                <select
+                  value={editForm.payerId}
+                  onChange={(e) => setEditForm({...editForm, payerId: e.target.value})}
+                >
+                  <option value="">-- Select Payer --</option>
+                  {payers.map(payer => (
+                    <option key={payer.id} value={payer.id}>{payer.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Procedures:
+                <select
+                  multiple
+                  value={editForm.procedureIds}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions, option => option.value);
+                    setEditForm({...editForm, procedureIds: selected});
+                  }}
+                  style={{ minHeight: '100px' }}
+                >
+                  {procedures.map(procedure => (
+                    <option key={procedure.id} value={procedure.id}>{procedure.name}</option>
+                  ))}
+                </select>
+                <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+                  Hold Ctrl/Cmd to select multiple
+                </small>
+              </label>
+              <label>
+                Team Members:
+                <select
+                  multiple
+                  value={editForm.teamMemberIds}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions, option => option.value);
+                    setEditForm({...editForm, teamMemberIds: selected});
+                  }}
+                  style={{ minHeight: '100px' }}
+                >
+                  {teamMembers.map(member => (
+                    <option key={member.id} value={member.id}>{member.name} ({member.role})</option>
+                  ))}
+                </select>
+                <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+                  Hold Ctrl/Cmd to select multiple
+                </small>
+              </label>
+              <label>
+                Invoice Number:
+                <input
+                  type="text"
+                  value={editForm.invoiceNumber}
+                  onChange={(e) => setEditForm({...editForm, invoiceNumber: e.target.value})}
                 />
               </label>
               <label>
