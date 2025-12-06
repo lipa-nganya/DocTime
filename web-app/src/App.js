@@ -43,7 +43,8 @@ function AppNavigator() {
   }
 
   if (!isAuthenticated && location.pathname !== '/welcome' && 
-      location.pathname !== '/login' && location.pathname !== '/signup') {
+      location.pathname !== '/login' && location.pathname !== '/signup' &&
+      location.pathname !== '/info/terms' && location.pathname !== '/info/privacy') {
     return <Navigate to="/welcome" replace />;
   }
 
@@ -54,6 +55,8 @@ function AppNavigator() {
           <Route path="/welcome" element={<WelcomeScreen />} />
           <Route path="/signup" element={<SignUpScreen />} />
           <Route path="/login" element={<LoginScreen />} />
+          <Route path="/info/terms" element={<TermsOfUseScreen />} />
+          <Route path="/info/privacy" element={<PrivacyPolicyScreen />} />
           <Route path="*" element={<Navigate to="/welcome" replace />} />
         </>
       ) : !isOnboarded ? (
