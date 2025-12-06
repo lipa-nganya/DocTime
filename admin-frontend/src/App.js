@@ -6,6 +6,7 @@ import FacilitiesScreen from './screens/FacilitiesScreen';
 import PayersScreen from './screens/PayersScreen';
 import TeamMembersScreen from './screens/TeamMembersScreen';
 import AlertModal from './components/AlertModal';
+import ConfirmModal from './components/ConfirmModal';
 import { getApiBaseUrl } from './services/environment';
 import './App.css';
 
@@ -299,6 +300,8 @@ function Cases() {
   const [users, setUsers] = useState([]);
   const [moving, setMoving] = useState(false);
   const [alertMessage, setAlertMessage] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadCases();
@@ -478,6 +481,12 @@ function Cases() {
               onClick={() => setShowMoveModal(true)}
             >
               Move to User
+            </button>
+            <button 
+              className="btn btn-delete"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              Delete Selected
             </button>
             <button 
               className="cancel-selection-button"

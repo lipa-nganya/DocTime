@@ -221,6 +221,72 @@ router.post('/cases/move', async (req, res) => {
 });
 
 /**
+ * Bulk delete cases (admin)
+ */
+router.delete('/cases/bulk', async (req, res) => {
+  try {
+    const { caseIds } = req.body;
+
+    if (!caseIds || !Array.isArray(caseIds) || caseIds.length === 0) {
+      return res.status(400).json({ error: 'Case IDs are required' });
+    }
+
+    // Find cases to get patient names for logging
+    const casesToDelete = await Case.findAll({
+      where: {
+        id: {
+          [Op.in]: caseIds
+        }
+      },
+      attributes: ['id', 'patientName', 'userId']
+    });
+
+    if (casesToDelete.length === 0) {
+      return res.status(404).json({ error: 'No cases found to delete' });
+    }
+
+    // Delete all cases
+    const deletedCount = await Case.destroy({
+      where: {
+        id: {
+          [Op.in]: caseIds
+        }
+      }
+    });
+
+    // Log activity for each deleted case
+    for (const caseItem of casesToDelete) {
+      await logActivity({
+        userId: caseItem.userId,
+        action: 'DELETE_CASE',
+        entityType: 'Case',
+        entityId: caseItem.id,
+        description: `Admin deleted case for patient "${caseItem.patientName}"`,
+        metadata: {
+          caseId: caseItem.id,
+          patientName: caseItem.patientName,
+          deletedBy: 'admin',
+          bulkDelete: true
+        },
+        ipAddress: getIpAddress(req),
+        userAgent: getUserAgent(req)
+      });
+    }
+
+    console.log(`✅ Deleted ${deletedCount} case(s)`);
+
+    res.json({
+      success: true,
+      message: `Successfully deleted ${deletedCount} case(s)`,
+      deletedCount
+    });
+  } catch (error) {
+    console.error('Error deleting cases:', error);
+    res.status(500).json({ error: 'Failed to delete cases' });
+  }
+});
+
+/**
  * Update case (admin)
  */
 router.put('/cases/:id', async (req, res) => {
