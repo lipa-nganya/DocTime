@@ -22,8 +22,8 @@ export default function AutocompleteDropdown({
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
-  const selectedOption = options.find(opt => opt.value === value);
-  const displayValue = selectedOption ? selectedOption.label : '';
+  const selectedOption = options.find(opt => String(opt.value) === String(value));
+  const displayValue = selectedOption ? selectedOption.label : searchQuery;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
