@@ -121,11 +121,13 @@ module.exports = (sequelize) => {
     Case.belongsToMany(models.Procedure, {
       through: models.CaseProcedure,
       foreignKey: 'caseId',
+      otherKey: 'procedureId',
       as: 'procedures'
     });
     Case.belongsToMany(models.TeamMember, {
       through: models.CaseTeamMember,
       foreignKey: 'caseId',
+      otherKey: 'teamMemberId',
       as: 'teamMembers'
     });
     Case.hasOne(models.Referral, { foreignKey: 'caseId', as: 'referral' });
