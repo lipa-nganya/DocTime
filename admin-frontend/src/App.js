@@ -816,44 +816,33 @@ function Cases() {
                   ))}
                 </select>
               </label>
-              <label>
-                Procedures:
-                <select
-                  multiple
-                  value={editForm.procedureIds}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions, option => option.value);
-                    setEditForm({...editForm, procedureIds: selected});
-                  }}
-                  style={{ minHeight: '100px' }}
-                >
-                  {procedures.map(procedure => (
-                    <option key={procedure.id} value={procedure.id}>{procedure.name}</option>
-                  ))}
-                </select>
-                <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
-                  Hold Ctrl/Cmd to select multiple
-                </small>
-              </label>
-              <label>
-                Team Members:
-                <select
-                  multiple
-                  value={editForm.teamMemberIds}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions, option => option.value);
-                    setEditForm({...editForm, teamMemberIds: selected});
-                  }}
-                  style={{ minHeight: '100px' }}
-                >
-                  {teamMembers.map(member => (
-                    <option key={member.id} value={member.id}>{member.name} ({member.role})</option>
-                  ))}
-                </select>
-                <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
-                  Hold Ctrl/Cmd to select multiple
-                </small>
-              </label>
+              <MultiSelectAutocomplete
+                label="Procedures"
+                value={editForm.procedureIds || []}
+                onChange={(selected) => setEditForm({...editForm, procedureIds: selected})}
+                options={procedures}
+                placeholder="Type to search procedures..."
+                emptyMessage="No procedures available"
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionDisplay={(option) => option.name}
+              />
+              <MultiSelectAutocomplete
+                label="Team Members"
+                value={editForm.teamMemberIds || []}
+                onChange={(selected) => setEditForm({...editForm, teamMemberIds: selected})}
+                options={teamMembers}
+                placeholder="Type to search team members..."
+                emptyMessage="No team members available"
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionDisplay={(option) => {
+                  if (option.otherRole) {
+                    return `${option.name} (${option.role} - ${option.otherRole})`;
+                  }
+                  return `${option.name} (${option.role})`;
+                }}
+              />
               <label>
                 Invoice Number:
                 <input
@@ -994,44 +983,33 @@ function Cases() {
                   ))}
                 </select>
               </label>
-              <label>
-                Procedures:
-                <select
-                  multiple
-                  value={createForm.procedureIds}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions, option => option.value);
-                    setCreateForm({...createForm, procedureIds: selected});
-                  }}
-                  style={{ minHeight: '100px' }}
-                >
-                  {procedures.map(procedure => (
-                    <option key={procedure.id} value={procedure.id}>{procedure.name}</option>
-                  ))}
-                </select>
-                <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
-                  Hold Ctrl/Cmd to select multiple
-                </small>
-              </label>
-              <label>
-                Team Members:
-                <select
-                  multiple
-                  value={createForm.teamMemberIds}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions, option => option.value);
-                    setCreateForm({...createForm, teamMemberIds: selected});
-                  }}
-                  style={{ minHeight: '100px' }}
-                >
-                  {teamMembers.map(member => (
-                    <option key={member.id} value={member.id}>{member.name} ({member.role})</option>
-                  ))}
-                </select>
-                <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
-                  Hold Ctrl/Cmd to select multiple
-                </small>
-              </label>
+              <MultiSelectAutocomplete
+                label="Procedures"
+                value={createForm.procedureIds || []}
+                onChange={(selected) => setCreateForm({...createForm, procedureIds: selected})}
+                options={procedures}
+                placeholder="Type to search procedures..."
+                emptyMessage="No procedures available"
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionDisplay={(option) => option.name}
+              />
+              <MultiSelectAutocomplete
+                label="Team Members"
+                value={createForm.teamMemberIds || []}
+                onChange={(selected) => setCreateForm({...createForm, teamMemberIds: selected})}
+                options={teamMembers}
+                placeholder="Type to search team members..."
+                emptyMessage="No team members available"
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionDisplay={(option) => {
+                  if (option.otherRole) {
+                    return `${option.name} (${option.role} - ${option.otherRole})`;
+                  }
+                  return `${option.name} (${option.role})`;
+                }}
+              />
               <label>
                 Invoice Number:
                 <input
