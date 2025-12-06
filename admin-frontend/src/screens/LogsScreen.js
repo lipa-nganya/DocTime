@@ -26,6 +26,8 @@ export default function LogsScreen() {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedAction, setSelectedAction] = useState('');
   const [alertMessage, setAlertMessage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const logsPerPage = 10;
 
   useEffect(() => {
     loadUsers();
@@ -34,6 +36,7 @@ export default function LogsScreen() {
 
   useEffect(() => {
     loadLogs();
+    setCurrentPage(1); // Reset to page 1 when filters change
   }, [startDate, endDate, selectedUserId, selectedAction]);
 
   const loadUsers = async () => {
@@ -98,6 +101,27 @@ export default function LogsScreen() {
 
   // Get unique actions for filter
   const uniqueActions = [...new Set(logs.map(log => log.action))].sort();
+
+  // Pagination calculations
+  const totalPages = Math.ceil(logs.length / logsPerPage);
+  const startIndex = (currentPage - 1) * logsPerPage;
+  const endIndex = startIndex + logsPerPage;
+  const paginatedLogs = logs.slice(startIndex, endIndex);
+
+  // Reset to page 1 if current page is out of bounds
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      // Scroll to top of table
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div className="logs">
@@ -186,36 +210,84 @@ export default function LogsScreen() {
           No logs found for the selected filters.
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>User</th>
-                <th>Action</th>
-                <th>Entity Type</th>
-                <th>Description</th>
-                <th>IP Address</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id}>
-                  <td>{new Date(log.createdAt).toLocaleString()}</td>
-                  <td>{formatUserName(log.user)}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                    {formatAction(log.action)}
-                  </td>
-                  <td>{log.entityType || '-'}</td>
-                  <td>{log.description || '-'}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                    {log.ipAddress || '-'}
-                  </td>
+        <>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Entity Type</th>
+                  <th>Description</th>
+                  <th>IP Address</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {paginatedLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td>{new Date(log.createdAt).toLocaleString()}</td>
+                    <td>{formatUserName(log.user)}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                      {formatAction(log.action)}
+                    </td>
+                    <td>{log.entityType || '-'}</td>
+                    <td>{log.description || '-'}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                      {log.ipAddress || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              marginTop: '20px',
+              gap: '10px'
+            }}>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="btn btn-sm"
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: currentPage === 1 ? '#ccc' : '#4ECDC4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Previous
+              </button>
+              
+              <span style={{ padding: '0 10px' }}>
+                Page {currentPage} of {totalPages} ({logs.length} total logs)
+              </span>
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="btn btn-sm"
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: currentPage === totalPages ? '#ccc' : '#4ECDC4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
       {alertMessage && (
         <AlertModal
