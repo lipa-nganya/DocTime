@@ -112,19 +112,9 @@ router.get('/ongoing-cases', async (req, res) => {
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'], required: false },
         { model: Facility, as: 'facility', required: false },
         { model: Payer, as: 'payer', required: false },
-        { model: Procedure, as: 'procedure', required: false },
-        { 
-          model: Procedure, 
-          as: 'procedures',
-          through: { attributes: [] },
-          required: false
-        },
-        { 
-          model: TeamMember, 
-          as: 'teamMembers',
-          through: { attributes: [] },
-          required: false
-        }
+        { model: Procedure, as: 'procedure', required: false }
+        // Temporarily removed procedures and teamMembers associations due to column mapping issues
+        // TODO: Fix belongsToMany associations for case_procedures and case_team_members tables
       ],
       order: [['dateOfProcedure', 'ASC']]
     });
@@ -151,19 +141,9 @@ router.get('/completed-cases', async (req, res) => {
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'], required: false },
         { model: Facility, as: 'facility', required: false },
         { model: Payer, as: 'payer', required: false },
-        { model: Procedure, as: 'procedure', required: false },
-        { 
-          model: Procedure, 
-          as: 'procedures',
-          through: { attributes: [] },
-          required: false
-        },
-        { 
-          model: TeamMember, 
-          as: 'teamMembers',
-          through: { attributes: [] },
-          required: false
-        }
+        { model: Procedure, as: 'procedure', required: false }
+        // Temporarily removed procedures and teamMembers associations due to column mapping issues
+        // TODO: Fix belongsToMany associations for case_procedures and case_team_members tables
       ],
       order: [['dateOfProcedure', 'DESC']]
     });
@@ -190,19 +170,9 @@ router.get('/cancelled-cases', async (req, res) => {
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'], required: false },
         { model: Facility, as: 'facility', required: false },
         { model: Payer, as: 'payer', required: false },
-        { model: Procedure, as: 'procedure', required: false },
-        { 
-          model: Procedure, 
-          as: 'procedures',
-          through: { attributes: [] },
-          required: false
-        },
-        { 
-          model: TeamMember, 
-          as: 'teamMembers',
-          through: { attributes: [] },
-          required: false
-        }
+        { model: Procedure, as: 'procedure', required: false }
+        // Temporarily removed procedures and teamMembers associations due to column mapping issues
+        // TODO: Fix belongsToMany associations for case_procedures and case_team_members tables
       ],
       order: [['dateOfProcedure', 'DESC']]
     });

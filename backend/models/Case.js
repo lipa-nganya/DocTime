@@ -119,13 +119,19 @@ module.exports = (sequelize) => {
     Case.belongsTo(models.Payer, { foreignKey: 'payerId', as: 'payer' });
     Case.belongsTo(models.Procedure, { foreignKey: 'procedureId', as: 'procedure' }); // Keep for backward compatibility
     Case.belongsToMany(models.Procedure, {
-      through: models.CaseProcedure,
+      through: {
+        model: models.CaseProcedure,
+        unique: false
+      },
       foreignKey: 'caseId',
       otherKey: 'procedureId',
       as: 'procedures'
     });
     Case.belongsToMany(models.TeamMember, {
-      through: models.CaseTeamMember,
+      through: {
+        model: models.CaseTeamMember,
+        unique: false
+      },
       foreignKey: 'caseId',
       otherKey: 'teamMemberId',
       as: 'teamMembers'
