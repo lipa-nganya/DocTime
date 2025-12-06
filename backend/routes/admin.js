@@ -110,8 +110,19 @@ router.get('/ongoing-cases', async (req, res) => {
       },
       include: [
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
-        { model: require('../models').Facility, as: 'facility' },
-        { model: require('../models').Procedure, as: 'procedure' }
+        { model: Facility, as: 'facility' },
+        { model: Payer, as: 'payer' },
+        { model: Procedure, as: 'procedure' },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        },
+        { 
+          model: TeamMember, 
+          as: 'teamMembers',
+          through: { attributes: [] }
+        }
       ],
       order: [['dateOfProcedure', 'ASC']]
     });
@@ -135,8 +146,19 @@ router.get('/completed-cases', async (req, res) => {
       },
       include: [
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
-        { model: require('../models').Facility, as: 'facility' },
-        { model: require('../models').Procedure, as: 'procedure' }
+        { model: Facility, as: 'facility' },
+        { model: Payer, as: 'payer' },
+        { model: Procedure, as: 'procedure' },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        },
+        { 
+          model: TeamMember, 
+          as: 'teamMembers',
+          through: { attributes: [] }
+        }
       ],
       order: [['dateOfProcedure', 'DESC']]
     });
@@ -160,8 +182,19 @@ router.get('/cancelled-cases', async (req, res) => {
       },
       include: [
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
-        { model: require('../models').Facility, as: 'facility' },
-        { model: require('../models').Procedure, as: 'procedure' }
+        { model: Facility, as: 'facility' },
+        { model: Payer, as: 'payer' },
+        { model: Procedure, as: 'procedure' },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] }
+        },
+        { 
+          model: TeamMember, 
+          as: 'teamMembers',
+          through: { attributes: [] }
+        }
       ],
       order: [['dateOfProcedure', 'DESC']]
     });
