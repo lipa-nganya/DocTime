@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { TeamMember, Facility, Payer, User, Procedure } = require('../models');
+const { TeamMember, Facility, Payer, User, Procedure, Case, CaseTeamMember, CaseProcedure } = require('../models');
 const { authenticateToken } = require('./auth');
 const { Sequelize } = require('sequelize');
 const config = require('../config');
@@ -814,6 +814,215 @@ router.post('/bulk-insert', async (req, res) => {
   } catch (error) {
     console.error('Bulk insert error:', error);
     res.status(500).json({ error: 'Bulk insert failed', message: error.message });
+  }
+});
+
+/**
+ * Bulk import cases from CSV data
+ * Accepts JSON array of case objects
+ */
+router.post('/bulk-import-cases', async (req, res) => {
+  try {
+    const { cases: casesData, userPhoneNumber } = req.body;
+    
+    if (!casesData || !Array.isArray(casesData)) {
+      return res.status(400).json({ error: 'cases must be an array' });
+    }
+    
+    if (!userPhoneNumber) {
+      return res.status(400).json({ error: 'userPhoneNumber is required' });
+    }
+    
+    // Convert phone number format if needed
+    let phoneNumber = userPhoneNumber.trim();
+    if (phoneNumber.startsWith('0')) {
+      phoneNumber = '254' + phoneNumber.substring(1);
+    } else if (!phoneNumber.startsWith('254')) {
+      phoneNumber = '254' + phoneNumber;
+    }
+    
+    // Find user
+    const user = await User.findOne({ where: { phoneNumber } });
+    if (!user) {
+      return res.status(404).json({ error: `User with phone number ${userPhoneNumber} (${phoneNumber}) not found` });
+    }
+    
+    // Helper functions
+    const parseDate = (dateStr) => {
+      if (!dateStr) return null;
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+      }
+      const date = new Date(dateStr);
+      return isNaN(date.getTime()) ? null : date;
+    };
+    
+    const parseAge = (ageStr) => {
+      if (!ageStr || !ageStr.trim()) return null;
+      const age = ageStr.trim().toLowerCase();
+      if (age.includes('year') || age.includes('month')) {
+        const yearMatch = age.match(/(\d+)\s*year/i);
+        const monthMatch = age.match(/(\d+)\s*month/i);
+        let totalMonths = 0;
+        if (yearMatch) totalMonths += parseInt(yearMatch[1]) * 12;
+        if (monthMatch) totalMonths += parseInt(monthMatch[1]);
+        return Math.round(totalMonths / 12);
+      }
+      const num = parseFloat(age);
+      return isNaN(num) ? null : Math.round(num);
+    };
+    
+    const parseAmount = (amountStr) => {
+      if (!amountStr || !amountStr.trim()) return null;
+      const cleaned = amountStr.toString().replace(/,/g, '').trim();
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? null : num;
+    };
+    
+    const parsePaymentStatus = (paidStr) => {
+      if (!paidStr || !paidStr.trim()) return 'Pending';
+      const paid = paidStr.trim().toLowerCase();
+      if (paid.includes('paid') || paid.includes('cash')) return 'Paid';
+      if (paid.includes('pro bono') || paid.includes('probono') || paid.includes('waived')) return 'Pro Bono';
+      return 'Pending';
+    };
+    
+    const getCaseStatus = (dateOfProcedure) => {
+      if (!dateOfProcedure) return 'Upcoming';
+      const procedureDate = new Date(dateOfProcedure);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      procedureDate.setHours(0, 0, 0, 0);
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      return procedureDate < endOfToday ? 'Completed' : 'Upcoming';
+    };
+    
+    const results = {
+      inserted: 0,
+      skipped: 0,
+      errors: 0,
+      errorDetails: []
+    };
+    
+    // Process each case
+    for (let i = 0; i < casesData.length; i++) {
+      const row = casesData[i];
+      
+      try {
+        // Parse date
+        const dateOfProcedure = parseDate(row['Date of Procedure']);
+        if (!dateOfProcedure) {
+          throw new Error('Invalid or missing date of procedure');
+        }
+        
+        // Find or create facility
+        let facility = null;
+        if (row['Facility / Hospital']) {
+          const [fac] = await Facility.findOrCreate({
+            where: { name: row['Facility / Hospital'].trim() },
+            defaults: { name: row['Facility / Hospital'].trim(), isSystemDefined: false }
+          });
+          facility = fac;
+        }
+        
+        // Find or create payer
+        let payer = null;
+        if (row['Payer']) {
+          const [pay] = await Payer.findOrCreate({
+            where: { name: row['Payer'].trim() },
+            defaults: { name: row['Payer'].trim(), isSystemDefined: false }
+          });
+          payer = pay;
+        }
+        
+        // Find or create procedures
+        const procedureNames = row['Procedure'] ? row['Procedure'].split(',').map(p => p.trim()).filter(p => p) : [];
+        const procedures = [];
+        for (const procName of procedureNames) {
+          const [proc] = await Procedure.findOrCreate({
+            where: { name: procName },
+            defaults: { name: procName, isSystemDefined: false }
+          });
+          procedures.push(proc);
+        }
+        
+        // Find or create team member
+        let teamMember = null;
+        if (row['Surgeon Name']) {
+          const [tm] = await TeamMember.findOrCreate({
+            where: {
+              userId: user.id,
+              name: row['Surgeon Name'].trim()
+            },
+            defaults: {
+              userId: user.id,
+              name: row['Surgeon Name'].trim(),
+              role: 'Surgeon',
+              isSystemDefined: false
+            }
+          });
+          teamMember = tm;
+        }
+        
+        const status = getCaseStatus(dateOfProcedure);
+        const isDatePassed = status === 'Completed';
+        
+        // Create case
+        const newCase = await Case.create({
+          userId: user.id,
+          dateOfProcedure: dateOfProcedure,
+          patientName: row['Patient Name'] || 'Unknown',
+          inpatientNumber: row['In-patient Number'] || null,
+          patientAge: parseAge(row['Patient Age']),
+          facilityId: facility?.id || null,
+          payerId: payer?.id || null,
+          invoiceNumber: row['Invoice Number'] || null,
+          procedureId: procedures.length > 0 ? procedures[0].id : null,
+          amount: parseAmount(row['Amount (without a comma)']),
+          paymentStatus: parsePaymentStatus(row['Paid']),
+          additionalNotes: row['Additional Notes/Comments'] || null,
+          status: status,
+          isAutoCompleted: isDatePassed,
+          completedAt: isDatePassed ? dateOfProcedure : null
+        });
+        
+        // Add procedures
+        for (const procedure of procedures) {
+          await CaseProcedure.create({
+            caseId: newCase.id,
+            procedureId: procedure.id
+          });
+        }
+        
+        // Add team member
+        if (teamMember) {
+          await CaseTeamMember.create({
+            caseId: newCase.id,
+            teamMemberId: teamMember.id
+          });
+        }
+        
+        results.inserted++;
+      } catch (error) {
+        results.errors++;
+        results.errorDetails.push({
+          row: i + 1,
+          patientName: row['Patient Name'] || 'Unknown',
+          error: error.message
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Bulk case import completed',
+      results
+    });
+  } catch (error) {
+    console.error('Bulk case import error:', error);
+    res.status(500).json({ error: 'Bulk case import failed', message: error.message });
   }
 });
 
