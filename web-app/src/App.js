@@ -72,7 +72,7 @@ function AppNavigator() {
           </Route>
           <Route path="/info/terms" element={<TermsOfUseScreen />} />
           <Route path="/info/privacy" element={<PrivacyPolicyScreen />} />
-          <Route path="/info/contact" element={<ScreenWithHeader title="Contact Us"><ContactUsScreen /></ScreenWithHeader>} />
+          <Route path="/info/contact" element={<ContactUsScreen />} />
           <Route path="/new-case" element={<ScreenWithHeader title="New Case"><NewCaseScreen /></ScreenWithHeader>} />
           <Route path="/case/:id" element={<ScreenWithHeader title="Case Details"><CaseDetailsScreen /></ScreenWithHeader>} />
           <Route path="/refer/:id" element={<ScreenWithHeader title="Refer Case"><ReferCaseScreen /></ScreenWithHeader>} />
