@@ -656,26 +656,27 @@ function Cases() {
             Create Case
           </button>
           {selectedCases.length > 0 && (
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <span>{selectedCases.length} case(s) selected</span>
-            <button 
-              className="move-button"
-              onClick={() => setShowMoveModal(true)}
-            >
-              Move to User
-            </button>
-            <button 
-              className="btn btn-delete"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              Delete Selected
-            </button>
-            <button 
-              className="cancel-selection-button"
-              onClick={() => setSelectedCases([])}
-            >
-              Clear Selection
-            </button>
+            <>
+              <span>{selectedCases.length} case(s) selected</span>
+              <button 
+                className="move-button"
+                onClick={() => setShowMoveModal(true)}
+              >
+                Move to User
+              </button>
+              <button 
+                className="btn btn-delete"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                Delete Selected
+              </button>
+              <button 
+                className="cancel-selection-button"
+                onClick={() => setSelectedCases([])}
+              >
+                Clear Selection
+              </button>
+            </>
           )}
         </div>
       </div>
