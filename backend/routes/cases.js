@@ -479,7 +479,11 @@ router.post('/:id/restore', async (req, res) => {
       return res.status(400).json({ error: 'Case is not cancelled' });
     }
 
-    const newStatus = new Date(caseItem.dateOfProcedure) >= new Date() ? 'Upcoming' : 'Completed';
+    // Check if date has passed (compare against end of today)
+    const procedureDate = new Date(caseItem.dateOfProcedure);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    const newStatus = procedureDate >= endOfToday ? 'Upcoming' : 'Completed';
     
     await caseItem.update({
       status: newStatus,
@@ -601,14 +605,19 @@ router.get('/:id', async (req, res) => {
 
 /**
  * Auto-complete expired cases (cron job)
+ * Cases are auto-completed only after the date has fully passed (end of day)
  */
 async function autoCompleteExpiredCases() {
   try {
+    // Get end of today (23:59:59.999)
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    
     const expiredCases = await Case.findAll({
       where: {
         status: 'Upcoming',
         dateOfProcedure: {
-          [Op.lt]: new Date()
+          [Op.lt]: endOfToday
         }
       },
       include: [{ model: User, as: 'user' }]
