@@ -55,6 +55,18 @@ export default function AutocompleteDropdown({
     };
   }, [isOpen, selectedOption]);
 
+  // Update search query when value or options change (for when options load after value is set)
+  useEffect(() => {
+    if (value && options.length > 0) {
+      const option = options.find(opt => String(opt.value) === String(value));
+      if (option) {
+        setSearchQuery(option.label);
+      }
+    } else if (!value) {
+      setSearchQuery('');
+    }
+  }, [value, options]);
+
   // Update search query when display value changes externally
   useEffect(() => {
     if (selectedOption && !isOpen) {
