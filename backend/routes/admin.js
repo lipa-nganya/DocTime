@@ -109,19 +109,21 @@ router.get('/ongoing-cases', async (req, res) => {
         // Removed dateOfProcedure filter to show all ongoing cases regardless of date
       },
       include: [
-        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
-        { model: Facility, as: 'facility' },
-        { model: Payer, as: 'payer' },
-        { model: Procedure, as: 'procedure' },
+        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'], required: false },
+        { model: Facility, as: 'facility', required: false },
+        { model: Payer, as: 'payer', required: false },
+        { model: Procedure, as: 'procedure', required: false },
         { 
           model: Procedure, 
           as: 'procedures',
-          through: { attributes: [] }
+          through: { attributes: [] },
+          required: false
         },
         { 
           model: TeamMember, 
           as: 'teamMembers',
-          through: { attributes: [] }
+          through: { attributes: [] },
+          required: false
         }
       ],
       order: [['dateOfProcedure', 'ASC']]
@@ -131,7 +133,8 @@ router.get('/ongoing-cases', async (req, res) => {
     res.json({ success: true, cases: cases || [] });
   } catch (error) {
     console.error('Error fetching ongoing cases:', error);
-    res.status(500).json({ error: 'Failed to fetch ongoing cases' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to fetch ongoing cases', message: error.message });
   }
 });
 
@@ -145,19 +148,21 @@ router.get('/completed-cases', async (req, res) => {
         status: 'Completed'
       },
       include: [
-        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
-        { model: Facility, as: 'facility' },
-        { model: Payer, as: 'payer' },
-        { model: Procedure, as: 'procedure' },
+        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'], required: false },
+        { model: Facility, as: 'facility', required: false },
+        { model: Payer, as: 'payer', required: false },
+        { model: Procedure, as: 'procedure', required: false },
         { 
           model: Procedure, 
           as: 'procedures',
-          through: { attributes: [] }
+          through: { attributes: [] },
+          required: false
         },
         { 
           model: TeamMember, 
           as: 'teamMembers',
-          through: { attributes: [] }
+          through: { attributes: [] },
+          required: false
         }
       ],
       order: [['dateOfProcedure', 'DESC']]
@@ -167,7 +172,8 @@ router.get('/completed-cases', async (req, res) => {
     res.json({ success: true, cases: cases || [] });
   } catch (error) {
     console.error('Error fetching completed cases:', error);
-    res.status(500).json({ error: 'Failed to fetch completed cases' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to fetch completed cases', message: error.message });
   }
 });
 
@@ -181,19 +187,21 @@ router.get('/cancelled-cases', async (req, res) => {
         status: 'Cancelled'
       },
       include: [
-        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
-        { model: Facility, as: 'facility' },
-        { model: Payer, as: 'payer' },
-        { model: Procedure, as: 'procedure' },
+        { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'], required: false },
+        { model: Facility, as: 'facility', required: false },
+        { model: Payer, as: 'payer', required: false },
+        { model: Procedure, as: 'procedure', required: false },
         { 
           model: Procedure, 
           as: 'procedures',
-          through: { attributes: [] }
+          through: { attributes: [] },
+          required: false
         },
         { 
           model: TeamMember, 
           as: 'teamMembers',
-          through: { attributes: [] }
+          through: { attributes: [] },
+          required: false
         }
       ],
       order: [['dateOfProcedure', 'DESC']]
@@ -203,7 +211,8 @@ router.get('/cancelled-cases', async (req, res) => {
     res.json({ success: true, cases: cases || [] });
   } catch (error) {
     console.error('Error fetching cancelled cases:', error);
-    res.status(500).json({ error: 'Failed to fetch cancelled cases' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to fetch cancelled cases', message: error.message });
   }
 });
 
