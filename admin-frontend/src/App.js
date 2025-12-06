@@ -334,39 +334,51 @@ function Cases() {
     setCurrentPage(1); // Reset to page 1 when switching tabs
   }, [activeTab]);
 
-  const loadCreateData = async (userId) => {
-    if (!userId) {
-      setFacilities([]);
-      setPayers([]);
-      setProcedures([]);
-      setTeamMembers([]);
-      return;
-    }
-
+  // Load facilities, payers, and procedures (not user-specific)
+  const loadCommonData = async () => {
     setLoadingCreateData(true);
     try {
-      const [facilitiesRes, payersRes, proceduresRes, teamMembersRes] = await Promise.all([
+      const [facilitiesRes, payersRes, proceduresRes] = await Promise.all([
         axios.get(`${getCurrentApiUrl()}/facilities`),
         axios.get(`${getCurrentApiUrl()}/payers`),
-        axios.get(`${getCurrentApiUrl()}/procedures`),
-        axios.get(`${getCurrentApiUrl()}/team-members`)
+        axios.get(`${getCurrentApiUrl()}/procedures`)
       ]);
 
       setFacilities(facilitiesRes.data.facilities || facilitiesRes.data.data?.facilities || []);
       setPayers(payersRes.data.payers || payersRes.data.data?.payers || []);
       setProcedures(proceduresRes.data.procedures || proceduresRes.data.data?.procedures || []);
-      const members = teamMembersRes.data.teamMembers || teamMembersRes.data.teamMember || teamMembersRes.data.data?.teamMembers || [];
-      // Filter team members for the selected user
-      const userMembers = members.filter(m => m.userId === userId);
-      setTeamMembers(userMembers);
     } catch (error) {
-      console.error('Error loading create data:', error);
+      console.error('Error loading common data:', error);
     } finally {
       setLoadingCreateData(false);
     }
   };
 
-  const handleCreateCase = () => {
+  // Load team members for a specific user
+  const loadTeamMembers = async (userId) => {
+    if (!userId) {
+      setTeamMembers([]);
+      return;
+    }
+
+    try {
+      const teamMembersRes = await axios.get(`${getCurrentApiUrl()}/team-members`);
+      const members = teamMembersRes.data.teamMembers || teamMembersRes.data.teamMember || teamMembersRes.data.data?.teamMembers || [];
+      // Filter team members for the selected user
+      const userMembers = members.filter(m => m.userId === userId);
+      setTeamMembers(userMembers);
+    } catch (error) {
+      console.error('Error loading team members:', error);
+      setTeamMembers([]);
+    }
+  };
+
+  const loadCreateData = async (userId) => {
+    // Load team members when user is selected
+    await loadTeamMembers(userId);
+  };
+
+  const handleCreateCase = async () => {
     setShowCreateModal(true);
     setCreateForm({
       userId: '',
@@ -384,9 +396,8 @@ function Cases() {
       status: 'Upcoming',
       additionalNotes: ''
     });
-    setFacilities([]);
-    setPayers([]);
-    setProcedures([]);
+    // Load facilities, payers, and procedures immediately
+    await loadCommonData();
     setTeamMembers([]);
   };
 
