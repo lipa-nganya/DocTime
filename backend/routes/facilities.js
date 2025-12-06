@@ -16,23 +16,33 @@ const logger = require('../utils/logger');
  */
 router.get('/', async (req, res) => {
   try {
+    logger.info('📥 GET /facilities request received');
     const cacheKey = 'facilities:all';
     let facilities = cache.get(cacheKey);
     
     if (!facilities) {
+      logger.info('💾 Cache miss - fetching from database');
       facilities = await Facility.findAll({
         order: [['name', 'ASC']]
       });
       // Cache for 5 minutes (facilities rarely change)
       cache.set(cacheKey, facilities, 5 * 60 * 1000);
+      logger.info(`💾 Cached ${facilities.length} facilities`);
+    } else {
+      logger.info(`💾 Cache hit - returning ${facilities.length} cached facilities`);
     }
     
     // Set cache headers for client-side caching
+    // Note: Cache-Control header is set but may cause CORS issues if not in allowed headers
     res.set('Cache-Control', 'private, max-age=300'); // 5 minutes
+    logger.info(`✅ Returning ${facilities.length} facilities`);
     res.json({ success: true, facilities });
   } catch (error) {
-    logger.error('Error fetching facilities:', error);
-    res.status(500).json({ error: 'Failed to fetch facilities' });
+    logger.error('❌ Error fetching facilities:', {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ error: 'Failed to fetch facilities', message: error.message });
   }
 });
 

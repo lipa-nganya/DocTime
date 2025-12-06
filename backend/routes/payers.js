@@ -16,23 +16,33 @@ const logger = require('../utils/logger');
  */
 router.get('/', async (req, res) => {
   try {
+    logger.info('📥 GET /payers request received');
     const cacheKey = 'payers:all';
     let payers = cache.get(cacheKey);
     
     if (!payers) {
+      logger.info('💾 Cache miss - fetching from database');
       payers = await Payer.findAll({
         order: [['name', 'ASC']]
       });
       // Cache for 5 minutes (payers rarely change)
       cache.set(cacheKey, payers, 5 * 60 * 1000);
+      logger.info(`💾 Cached ${payers.length} payers`);
+    } else {
+      logger.info(`💾 Cache hit - returning ${payers.length} cached payers`);
     }
     
     // Set cache headers for client-side caching
+    // Note: Cache-Control header is set but may cause CORS issues if not in allowed headers
     res.set('Cache-Control', 'private, max-age=300'); // 5 minutes
+    logger.info(`✅ Returning ${payers.length} payers`);
     res.json({ success: true, payers });
   } catch (error) {
-    logger.error('Error fetching payers:', error);
-    res.status(500).json({ error: 'Failed to fetch payers' });
+    logger.error('❌ Error fetching payers:', {
+      message: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ error: 'Failed to fetch payers', message: error.message });
   }
 });
 
