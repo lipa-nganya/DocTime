@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import PacmanGame from '../components/PacmanGame';
 import './ProfileScreen.css';
 
 export default function ProfileScreen() {
@@ -13,41 +12,11 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [showPacman, setShowPacman] = useState(false);
-  const typedKeysRef = useRef('');
-  const keyboardInputRef = useRef(null);
 
   useEffect(() => {
     loadProfile();
   }, []);
 
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      // Only track if not in an input field
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
-        return;
-      }
-
-      const key = e.key.toLowerCase();
-      typedKeysRef.current += key;
-      
-      // Keep only last 6 characters
-      if (typedKeysRef.current.length > 6) {
-        typedKeysRef.current = typedKeysRef.current.slice(-6);
-      }
-
-      // Check if "pacman" was typed
-      if (typedKeysRef.current.includes('pacman')) {
-        setShowPacman(true);
-        typedKeysRef.current = '';
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, []);
 
   const loadProfile = async () => {
     try {
@@ -180,75 +149,7 @@ export default function ProfileScreen() {
           </button>
         </div>
 
-        <div className="easter-egg-hint">
-          <p className="easter-egg-text">
-            Open{' '}
-            <button
-              type="button"
-              className="keyboard-link"
-              onClick={() => {
-                if (keyboardInputRef.current) {
-                  keyboardInputRef.current.focus();
-                  // On mobile, we need to ensure the input is visible (even if tiny) for keyboard to open
-                  setTimeout(() => {
-                    keyboardInputRef.current?.focus();
-                  }, 100);
-                }
-              }}
-            >
-              keyboard
-            </button>
-            {' '}and type "pacman"
-          </p>
-          {/* Hidden input to trigger keyboard */}
-          <input
-            ref={keyboardInputRef}
-            type="text"
-            className="keyboard-trigger-input"
-            onKeyDown={(e) => {
-              const key = e.key.toLowerCase();
-              // Skip special keys
-              if (key.length > 1 && !['backspace', 'delete'].includes(key)) {
-                return;
-              }
-              
-              if (key === 'backspace' || key === 'delete') {
-                // Remove last character
-                typedKeysRef.current = typedKeysRef.current.slice(0, -1);
-                return;
-              }
-              
-              typedKeysRef.current += key;
-              
-              // Keep only last 6 characters
-              if (typedKeysRef.current.length > 6) {
-                typedKeysRef.current = typedKeysRef.current.slice(-6);
-              }
-
-              // Check if "pacman" was typed
-              if (typedKeysRef.current.includes('pacman')) {
-                setShowPacman(true);
-                typedKeysRef.current = '';
-                e.target.value = '';
-                e.target.blur();
-              }
-            }}
-            onChange={(e) => {
-              // Clear the input value to keep it empty
-              e.target.value = '';
-            }}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
-            tabIndex={0}
-          />
-        </div>
       </div>
-
-      {showPacman && (
-        <PacmanGame onClose={() => setShowPacman(false)} />
-      )}
     </div>
   );
 }

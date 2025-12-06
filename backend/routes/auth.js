@@ -51,6 +51,17 @@ router.post('/request-otp', [
     
     formattedPhone = '254' + formattedPhone;
 
+    // Check if user already exists and has completed signup (has pinHash)
+    // This check happens BEFORE sending OTP to avoid unnecessary SMS costs
+    const existingUser = await User.findOne({ where: { phoneNumber: formattedPhone } });
+    if (existingUser && existingUser.pinHash) {
+      // User already completed signup - don't send OTP
+      return res.status(400).json({ 
+        error: 'User already exists. Please login instead.',
+        userExists: true
+      });
+    }
+
     // Generate OTP
     const otp = generateOTP();
     

@@ -120,6 +120,9 @@ function Dashboard() {
 function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [alertMessage, setAlertMessage] = useState(null);
 
   useEffect(() => {
     loadUsers();
@@ -136,6 +139,36 @@ function Users() {
     }
   };
 
+  const handleEdit = (user) => {
+    setEditingUser(user);
+    setEditForm({
+      prefix: user.prefix || '',
+      preferredName: user.preferredName || '',
+      role: user.role || '',
+      otherRole: user.otherRole || ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return;
+    
+    try {
+      await axios.put(`${getCurrentApiUrl()}/admin/users/${editingUser.id}`, editForm);
+      setEditingUser(null);
+      setEditForm({});
+      loadUsers();
+      setAlertMessage('User updated successfully');
+    } catch (error) {
+      console.error('Error updating user:', error);
+      setAlertMessage('Failed to update user');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setEditForm({});
+  };
+
   if (loading) return <div>Loading...</div>;
 
   // Helper function to format user name from prefix and preferredName
@@ -148,9 +181,18 @@ function Users() {
     return name || 'N/A';
   };
 
+  const roleOptions = ['Surgeon', 'Assistant Surgeon', 'Anaesthetist', 'Assistant Anaesthetist', 'Other'];
+  const prefixOptions = ['Dr.', 'Mr.', 'Mrs.', 'Ms.', 'Miss', 'Prof.'];
+
   return (
     <div className="users">
       <h2>Users</h2>
+      {alertMessage && (
+        <div className="alert" style={{ marginBottom: '20px', padding: '10px', backgroundColor: alertMessage.includes('success') ? '#d4edda' : '#f8d7da', color: alertMessage.includes('success') ? '#155724' : '#721c24', borderRadius: '4px' }}>
+          {alertMessage}
+          <button onClick={() => setAlertMessage(null)} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+        </div>
+      )}
       <table className="data-table">
         <thead>
           <tr>
@@ -160,6 +202,7 @@ function Users() {
             <th>Signup OTP</th>
             <th>Last Login</th>
             <th>Created</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -173,10 +216,71 @@ function Users() {
               </td>
               <td>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</td>
               <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+              <td>
+                <button className="btn btn-edit" onClick={() => handleEdit(user)}>Edit</button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {editingUser && (
+        <div className="edit-modal">
+          <div className="edit-modal-content">
+            <h3>Edit User: {editingUser.phoneNumber}</h3>
+            <div className="edit-form">
+              <label>
+                Prefix:
+                <select
+                  value={editForm.prefix}
+                  onChange={(e) => setEditForm({...editForm, prefix: e.target.value})}
+                >
+                  <option value="">-- Select Prefix --</option>
+                  {prefixOptions.map(prefix => (
+                    <option key={prefix} value={prefix}>{prefix}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Preferred Name:
+                <input
+                  type="text"
+                  value={editForm.preferredName}
+                  onChange={(e) => setEditForm({...editForm, preferredName: e.target.value})}
+                  placeholder="Enter preferred name"
+                />
+              </label>
+              <label>
+                Role:
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({...editForm, role: e.target.value})}
+                >
+                  <option value="">-- Select Role --</option>
+                  {roleOptions.map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </label>
+              {editForm.role === 'Other' && (
+                <label>
+                  Other Role:
+                  <input
+                    type="text"
+                    value={editForm.otherRole}
+                    onChange={(e) => setEditForm({...editForm, otherRole: e.target.value})}
+                    placeholder="Specify role"
+                  />
+                </label>
+              )}
+            </div>
+            <div className="edit-actions">
+              <button onClick={handleSaveEdit}>Save</button>
+              <button onClick={handleCancelEdit}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

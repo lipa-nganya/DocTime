@@ -293,6 +293,18 @@ export default function NewCaseScreen() {
           options={facilities.map(f => ({ label: f.name, value: f.id }))}
           placeholder="Type to search facility..."
           emptyMessage="No facilities available. Add facilities in the admin app."
+          onCreateNew={async (name) => {
+            try {
+              const response = await api.post('/facilities', { name });
+              const newFacility = response.data.facility;
+              setFacilities([...facilities, newFacility]);
+              setFacilityId(String(newFacility.id));
+              setSnackbarMessage(`Facility "${name}" added successfully`);
+              setSnackbarVisible(true);
+            } catch (error) {
+              setAlertMessage(error.response?.data?.error || 'Failed to add facility');
+            }
+          }}
         />
 
         <AutocompleteDropdown
@@ -302,6 +314,18 @@ export default function NewCaseScreen() {
           options={payers.map(p => ({ label: p.name, value: p.id }))}
           placeholder="Type to search payer..."
           emptyMessage="No payers available. Add payers in the admin app."
+          onCreateNew={async (name) => {
+            try {
+              const response = await api.post('/payers', { name });
+              const newPayer = response.data.payer;
+              setPayers([...payers, newPayer]);
+              setPayerId(String(newPayer.id));
+              setSnackbarMessage(`Payer "${name}" added successfully`);
+              setSnackbarVisible(true);
+            } catch (error) {
+              setAlertMessage(error.response?.data?.error || 'Failed to add payer');
+            }
+          }}
         />
 
         <input
@@ -344,9 +368,32 @@ export default function NewCaseScreen() {
                 {procedures.length === 0 ? (
                   <p className="no-results-text">No procedures available. Add procedures in the admin app.</p>
                 ) : filteredProcedures.length === 0 ? (
-                  <p className="no-results-text">
-                    No procedures found matching "{procedureSearchQuery}"
-                  </p>
+                  <div className="no-results-container">
+                    <p className="no-results-text">
+                      No procedures found matching "{procedureSearchQuery}"
+                    </p>
+                    {procedureSearchQuery.trim() && (
+                      <button
+                        type="button"
+                        className="btn-add-new"
+                        onClick={async () => {
+                          try {
+                            const response = await api.post('/procedures', { name: procedureSearchQuery.trim() });
+                            const newProcedure = response.data.procedure;
+                            setProcedures([...procedures, newProcedure]);
+                            toggleProcedure(newProcedure.id);
+                            setProcedureSearchQuery('');
+                            setSnackbarMessage(`Procedure "${procedureSearchQuery.trim()}" added successfully`);
+                            setSnackbarVisible(true);
+                          } catch (error) {
+                            setAlertMessage(error.response?.data?.error || 'Failed to add procedure');
+                          }
+                        }}
+                      >
+                        + Add "{procedureSearchQuery.trim()}"
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <>
                     {/* Show selected procedures first, then unselected ones */}

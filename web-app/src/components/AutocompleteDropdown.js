@@ -11,7 +11,9 @@ export default function AutocompleteDropdown({
   placeholder, 
   label, 
   emptyMessage,
-  onInputChange 
+  onInputChange,
+  onCreateNew,
+  createLabel
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -153,18 +155,57 @@ export default function AutocompleteDropdown({
           >
             {filteredOptions.length === 0 ? (
               <div className="autocomplete-no-results">
-                No matches found for "{searchQuery}"
+                {searchQuery.trim() && onCreateNew ? (
+                  <div className="autocomplete-create-new">
+                    <span>No matches found for "{searchQuery}"</span>
+                    <button
+                      type="button"
+                      className="autocomplete-add-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onCreateNew && searchQuery.trim()) {
+                          onCreateNew(searchQuery.trim());
+                          setSearchQuery('');
+                          setIsOpen(false);
+                        }
+                      }}
+                      title={`Add "${searchQuery.trim()}"`}
+                    >
+                      + Add "{searchQuery.trim()}"
+                    </button>
+                  </div>
+                ) : (
+                  <span>No matches found for "{searchQuery}"</span>
+                )}
               </div>
             ) : (
-              filteredOptions.map((option) => (
-                <div
-                  key={option.value}
-                  className={`autocomplete-option ${value === option.value ? 'selected' : ''}`}
-                  onClick={() => handleSelect(option.value)}
-                >
-                  {option.label}
-                </div>
-              ))
+              <>
+                {filteredOptions.map((option) => (
+                  <div
+                    key={option.value}
+                    className={`autocomplete-option ${value === option.value ? 'selected' : ''}`}
+                    onClick={() => handleSelect(option.value)}
+                  >
+                    {option.label}
+                  </div>
+                ))}
+                {searchQuery.trim() && onCreateNew && !filteredOptions.some(opt => opt.label.toLowerCase() === searchQuery.toLowerCase()) && (
+                  <div
+                    className="autocomplete-option autocomplete-create-option"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onCreateNew && searchQuery.trim()) {
+                        onCreateNew(searchQuery.trim());
+                        setSearchQuery('');
+                        setIsOpen(false);
+                      }
+                    }}
+                  >
+                    <span className="autocomplete-add-icon">+</span>
+                    <span>Add "{searchQuery.trim()}"</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

@@ -117,6 +117,50 @@
   font-style: italic;
 }
 
+.autocomplete-create-new {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.autocomplete-add-button {
+  background-color: #4ECDC4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 8px;
+}
+
+.autocomplete-add-button:hover {
+  background-color: #3db8b0;
+}
+
+.autocomplete-create-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4ECDC4;
+  font-weight: 500;
+  border-top: 1px solid #e0e0e0;
+  background-color: #f9f9f9;
+}
+
+.autocomplete-create-option:hover {
+  background-color: #f0f0f0;
+}
+
+.autocomplete-add-icon {
+  font-size: 18px;
+  font-weight: bold;
+  color: #4ECDC4;
+}
+
 .empty-state-text {
   color: #999;
   font-size: 14px;

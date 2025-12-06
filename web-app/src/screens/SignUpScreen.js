@@ -74,12 +74,19 @@ export default function SignUpScreen() {
         setStep('otp');
       }
     } catch (error) {
-      // Even if there's an error, if OTP was generated, allow user to enter it
-      // The SMS might have been sent before the error occurred
       console.error('OTP request error:', error);
       
+      // Check if user already exists
+      if (error.response?.data?.userExists) {
+        // User already exists - redirect to login
+        showError('An account with this phone number already exists. Please login instead.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+        return;
+      }
+      
       // Check if we got a response (even if it's an error status)
-      // Sometimes SMS is sent but response parsing fails
       if (error.response && error.response.status < 500) {
         // Client error (4xx) - likely a real issue
         showError(error.response?.data?.error || error.message || 'Failed to send OTP');
