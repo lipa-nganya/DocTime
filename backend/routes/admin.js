@@ -1,10 +1,26 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const csv = require('csv-parser');
+const { Readable } = require('stream');
 const { User, Case, Referral, Role, TeamMember, Settings, Facility, Payer, Procedure, CaseTeamMember, CaseProcedure, ActivityLog } = require('../models');
 const { authenticateToken } = require('./auth');
 const { Op } = require('sequelize');
 const { Sequelize } = require('sequelize');
 const { logActivity, getIpAddress, getUserAgent } = require('../utils/activityLogger');
+
+// Configure multer for CSV file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'text/csv' || file.mimetype === 'application/vnd.ms-excel' || file.originalname.endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed'), false);
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 // Admin routes (in production, add admin role check)
 // Temporarily disable auth for local development - add back in production
@@ -112,9 +128,19 @@ router.get('/ongoing-cases', async (req, res) => {
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'], required: false },
         { model: Facility, as: 'facility', required: false },
         { model: Payer, as: 'payer', required: false },
-        { model: Procedure, as: 'procedure', required: false }
-        // Temporarily removed procedures and teamMembers associations due to column mapping issues
-        // TODO: Fix belongsToMany associations for case_procedures and case_team_members tables
+        { model: Procedure, as: 'procedure', required: false },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] },
+          required: false
+        },
+        { 
+          model: TeamMember, 
+          as: 'teamMembers',
+          through: { attributes: [] },
+          required: false
+        }
       ],
       order: [['dateOfProcedure', 'ASC']]
     });
@@ -141,9 +167,19 @@ router.get('/completed-cases', async (req, res) => {
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'], required: false },
         { model: Facility, as: 'facility', required: false },
         { model: Payer, as: 'payer', required: false },
-        { model: Procedure, as: 'procedure', required: false }
-        // Temporarily removed procedures and teamMembers associations due to column mapping issues
-        // TODO: Fix belongsToMany associations for case_procedures and case_team_members tables
+        { model: Procedure, as: 'procedure', required: false },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] },
+          required: false
+        },
+        { 
+          model: TeamMember, 
+          as: 'teamMembers',
+          through: { attributes: [] },
+          required: false
+        }
       ],
       order: [['dateOfProcedure', 'DESC']]
     });
@@ -170,9 +206,19 @@ router.get('/cancelled-cases', async (req, res) => {
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'], required: false },
         { model: Facility, as: 'facility', required: false },
         { model: Payer, as: 'payer', required: false },
-        { model: Procedure, as: 'procedure', required: false }
-        // Temporarily removed procedures and teamMembers associations due to column mapping issues
-        // TODO: Fix belongsToMany associations for case_procedures and case_team_members tables
+        { model: Procedure, as: 'procedure', required: false },
+        { 
+          model: Procedure, 
+          as: 'procedures',
+          through: { attributes: [] },
+          required: false
+        },
+        { 
+          model: TeamMember, 
+          as: 'teamMembers',
+          through: { attributes: [] },
+          required: false
+        }
       ],
       order: [['dateOfProcedure', 'DESC']]
     });
@@ -1039,6 +1085,241 @@ router.get('/logs', async (req, res) => {
   } catch (error) {
     console.error('Error fetching activity logs:', error);
     res.status(500).json({ error: 'Failed to fetch activity logs' });
+  }
+});
+
+/**
+ * Upload CSV file to import completed cases
+ * Accepts CSV file and userId
+ */
+router.post('/cases/upload-csv', upload.single('csvFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'CSV file is required' });
+    }
+
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Verify user exists
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Parse CSV
+    const cases = [];
+    const stream = Readable.from(req.file.buffer.toString('utf-8'));
+    
+    await new Promise((resolve, reject) => {
+      let headers = [];
+      let isFirstRow = true;
+
+      stream
+        .pipe(csv())
+        .on('headers', (headerList) => {
+          headers = headerList;
+        })
+        .on('data', (row) => {
+          // Find column indices (case-insensitive)
+          const dateIndex = headers.findIndex(h => 
+            h.toLowerCase().includes('date of procedure') || 
+            h.toLowerCase().includes('date') ||
+            h.toLowerCase() === 'date'
+          );
+          const patientNameIndex = headers.findIndex(h => 
+            h.toLowerCase().includes('patient name') || 
+            h.toLowerCase().includes('patient') ||
+            h.toLowerCase() === 'name'
+          );
+          const inpatientNumberIndex = headers.findIndex(h => 
+            h.toLowerCase().includes('in-patient') || 
+            h.toLowerCase().includes('inpatient') ||
+            h.toLowerCase().includes('ip number')
+          );
+          const ageIndex = headers.findIndex(h => 
+            h.toLowerCase().includes('age') || 
+            h.toLowerCase().includes('patient age')
+          );
+          const amountIndex = headers.findIndex(h => 
+            h.toLowerCase().includes('amount') && 
+            !h.toLowerCase().includes('paid')
+          );
+          const paymentStatusIndex = headers.findIndex(h => 
+            h.toLowerCase().includes('payment status') || 
+            h.toLowerCase().includes('paid') ||
+            h.toLowerCase().includes('payment')
+          );
+          const notesIndex = headers.findIndex(h => 
+            h.toLowerCase().includes('note') || 
+            h.toLowerCase().includes('comment') ||
+            h.toLowerCase().includes('additional')
+          );
+
+          // Get values
+          const dateStr = dateIndex >= 0 ? row[headers[dateIndex]]?.trim() : null;
+          const patientName = patientNameIndex >= 0 ? row[headers[patientNameIndex]]?.trim() : null;
+
+          if (!dateStr || !patientName) {
+            return; // Skip rows without required fields
+          }
+
+          // Parse date
+          let dateOfProcedure;
+          try {
+            const dateParts = dateStr.split(/[/\s-]/);
+            if (dateParts.length >= 3) {
+              // Format: MM/DD/YYYY or M/D/YYYY
+              const month = parseInt(dateParts[0]) - 1;
+              const day = parseInt(dateParts[1]);
+              const year = parseInt(dateParts[2]);
+              dateOfProcedure = new Date(year, month, day);
+            } else {
+              dateOfProcedure = new Date(dateStr);
+            }
+
+            if (isNaN(dateOfProcedure.getTime())) {
+              return; // Skip invalid dates
+            }
+          } catch (error) {
+            return; // Skip rows with date parsing errors
+          }
+
+          // Parse optional fields
+          const inpatientNumber = inpatientNumberIndex >= 0 ? row[headers[inpatientNumberIndex]]?.trim() : null;
+          const ageStr = ageIndex >= 0 ? row[headers[ageIndex]]?.trim() : null;
+          const amountStr = amountIndex >= 0 ? row[headers[amountIndex]]?.trim() : null;
+          const paymentStatusStr = paymentStatusIndex >= 0 ? row[headers[paymentStatusIndex]]?.trim() : null;
+          const additionalNotes = notesIndex >= 0 ? row[headers[notesIndex]]?.trim() : null;
+
+          // Parse age
+          let patientAge = null;
+          if (ageStr) {
+            const age = ageStr.toLowerCase();
+            if (age.includes('year') || age.includes('month')) {
+              const yearMatch = age.match(/(\d+)\s*year/i);
+              const monthMatch = age.match(/(\d+)\s*month/i);
+              let totalMonths = 0;
+              if (yearMatch) totalMonths += parseInt(yearMatch[1]) * 12;
+              if (monthMatch) totalMonths += parseInt(monthMatch[1]);
+              patientAge = Math.round(totalMonths / 12);
+            } else {
+              const num = parseFloat(age);
+              if (!isNaN(num)) patientAge = Math.round(num);
+            }
+          }
+
+          // Parse amount
+          let amount = null;
+          if (amountStr) {
+            const cleaned = amountStr.toString().replace(/,/g, '').trim();
+            const num = parseFloat(cleaned);
+            if (!isNaN(num)) amount = num;
+          }
+
+          // Parse payment status
+          let paymentStatus = 'Pending';
+          if (paymentStatusStr) {
+            const paid = paymentStatusStr.toLowerCase();
+            if (paid.includes('paid') || paid.includes('cash')) {
+              paymentStatus = 'Paid';
+            } else if (paid.includes('pro bono') || paid.includes('probono') || paid.includes('waived')) {
+              paymentStatus = 'Pro Bono';
+            } else if (paid.includes('partially')) {
+              paymentStatus = 'Partially Paid';
+            } else if (paid.includes('cancelled') || paid.includes('canceled')) {
+              paymentStatus = 'Cancelled';
+            }
+          }
+
+          cases.push({
+            dateOfProcedure,
+            patientName: patientName.replace(/^"|"$/g, ''),
+            inpatientNumber: inpatientNumber || null,
+            patientAge,
+            amount,
+            paymentStatus,
+            additionalNotes: additionalNotes || null
+          });
+        })
+        .on('end', resolve)
+        .on('error', reject);
+    });
+
+    if (cases.length === 0) {
+      return res.status(400).json({ error: 'No valid cases found in CSV file' });
+    }
+
+    // Import cases
+    const results = {
+      inserted: 0,
+      skipped: 0,
+      errors: 0,
+      errorDetails: []
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const caseData of cases) {
+      try {
+        const procedureDate = new Date(caseData.dateOfProcedure);
+        procedureDate.setHours(0, 0, 0, 0);
+
+        // Check if case already exists
+        const existing = await Case.findOne({
+          where: {
+            userId: user.id,
+            patientName: caseData.patientName,
+            dateOfProcedure: procedureDate
+          }
+        });
+
+        if (existing) {
+          results.skipped++;
+          continue;
+        }
+
+        // All uploaded cases are marked as Completed
+        await Case.create({
+          userId: user.id,
+          dateOfProcedure: procedureDate,
+          patientName: caseData.patientName,
+          inpatientNumber: caseData.inpatientNumber,
+          patientAge: caseData.patientAge,
+          amount: caseData.amount,
+          paymentStatus: caseData.paymentStatus,
+          additionalNotes: caseData.additionalNotes,
+          status: 'Completed',
+          isAutoCompleted: true,
+          completedAt: new Date()
+        });
+
+        results.inserted++;
+      } catch (error) {
+        results.errors++;
+        results.errorDetails.push({
+          patientName: caseData.patientName,
+          error: error.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully imported ${results.inserted} case(s)`,
+      results: {
+        inserted: results.inserted,
+        skipped: results.skipped,
+        errors: results.errors,
+        errorDetails: results.errorDetails
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading CSV:', error);
+    res.status(500).json({ error: 'Failed to upload CSV', message: error.message });
   }
 });
 
