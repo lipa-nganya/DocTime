@@ -53,3 +53,33 @@
   margin-left: 12px;
 }
 
+.info-footer {
+  margin-top: 40px;
+  padding-top: 20px;
+  text-align: center;
+  border-top: 1px solid #e0e0e0;
+}
+
+.info-footer p {
+  margin: 0;
+  font-size: 12px;
+  color: #666;
+  font-family: 'Lato', sans-serif;
+}
+
+.info-footer-link {
+  color: #00c4cc;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.info-footer-link:hover {
+  color: #4ECDC4;
+  text-decoration: underline;
+}
+
+.info-footer-link:active {
+  color: #00a8b0;
+}
+

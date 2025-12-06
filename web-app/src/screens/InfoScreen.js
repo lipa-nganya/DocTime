@@ -35,6 +35,20 @@ export default function InfoScreen() {
           <span className="info-menu-arrow">›</span>
         </button>
       </div>
+      
+      <div className="info-footer">
+        <p>
+          Developed by{' '}
+          <a 
+            href="https://thewolfgang.tech/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="info-footer-link"
+          >
+            WOLFGANG
+          </a>
+        </p>
+      </div>
     </div>
   );
 }
