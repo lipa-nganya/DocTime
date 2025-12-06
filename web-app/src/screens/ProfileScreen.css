@@ -1,14 +1,15 @@
 .profile-container {
-  padding: 20px;
-  max-width: 600px;
+  padding: 20px 10px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
 .profile-content {
   background: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 24px 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
 }
 
 .profile-title {
