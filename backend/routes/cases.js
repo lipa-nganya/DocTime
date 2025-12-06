@@ -148,7 +148,7 @@ router.post('/', [
 });
 
 /**
- * Get upcoming cases (next 5)
+ * Get upcoming cases (all ongoing cases - Upcoming/Referred regardless of date)
  */
 router.get('/upcoming', async (req, res) => {
   try {
@@ -157,10 +157,8 @@ router.get('/upcoming', async (req, res) => {
         userId: req.userId,
         status: {
           [Op.in]: ['Upcoming', 'Referred']
-        },
-        dateOfProcedure: {
-          [Op.gte]: new Date()
         }
+        // Removed date filter to show all ongoing cases regardless of date
       },
       include: [
         { model: Facility, as: 'facility' },
@@ -173,8 +171,8 @@ router.get('/upcoming', async (req, res) => {
         },
         { model: User, as: 'referredTo', attributes: ['id', 'phoneNumber', 'role'] }
       ],
-      order: [['dateOfProcedure', 'ASC']],
-      limit: 5
+      order: [['dateOfProcedure', 'ASC']]
+      // Removed limit to show all ongoing cases
     });
 
     res.json({ success: true, cases });
@@ -540,6 +538,7 @@ router.get('/history/cancelled', async (req, res) => {
       order: [['dateOfProcedure', 'DESC']]
     });
 
+    console.log(`📊 Found ${cases.length} cancelled cases for user ${req.userId}`);
     res.json({ success: true, cases });
   } catch (error) {
     console.error('Error fetching cancelled cases:', error);
