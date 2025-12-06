@@ -1,5 +1,5 @@
 .calendar-picker-container {
-  margin-bottom: 16px;
+  margin-bottom: 0;
   margin-left: 0;
   margin-right: 0;
 }
@@ -14,10 +14,10 @@
 
 .calendar-picker-input {
   width: 100%;
-  max-width: 300px;
-  padding: 16px;
-  padding-right: 40px; /* Add space for calendar icon */
-  font-size: 16px;
+  max-width: 100%;
+  padding: 10px 12px;
+  padding-right: 36px; /* Add space for calendar icon */
+  font-size: 14px;
   border: 2px solid #00c4cc;
   border-radius: 4px;
   background-color: #FFFFFF;
@@ -26,6 +26,7 @@
   font-family: inherit;
   transition: border-color 0.2s;
   position: relative;
+  box-sizing: border-box;
   /* Ensure calendar icon is visible on all devices */
   -webkit-appearance: none;
   -moz-appearance: none;

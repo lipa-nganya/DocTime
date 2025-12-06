@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import AlertModal from '../components/AlertModal';
+import CalendarPicker from '../components/CalendarPicker';
 import './CaseHistoryScreen.css';
 
 export default function CaseHistoryScreen() {
@@ -9,9 +10,14 @@ export default function CaseHistoryScreen() {
   const [tab, setTab] = useState('completed');
   const [completedCases, setCompletedCases] = useState([]);
   const [cancelledCases, setCancelledCases] = useState([]);
+  const [allCompletedCases, setAllCompletedCases] = useState([]);
+  const [allCancelledCases, setAllCancelledCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [alertMessage, setAlertMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
 
   useEffect(() => {
     loadCases();
@@ -24,8 +30,13 @@ export default function CaseHistoryScreen() {
         api.get('/cases/history/cancelled')
       ]);
 
-      setCompletedCases(completedRes.data.cases || []);
-      setCancelledCases(cancelledRes.data.cases || []);
+      const completed = completedRes.data.cases || [];
+      const cancelled = cancelledRes.data.cases || [];
+      
+      setAllCompletedCases(completed);
+      setAllCancelledCases(cancelled);
+      setCompletedCases(completed);
+      setCancelledCases(cancelled);
     } catch (error) {
       console.error('Error loading cases:', error);
       setAlertMessage('Failed to load case history');
@@ -117,7 +128,52 @@ export default function CaseHistoryScreen() {
     });
   };
 
-  const cases = tab === 'completed' ? completedCases : cancelledCases;
+  // Filter cases based on search query and date range
+  const filteredCases = useMemo(() => {
+    const allCases = tab === 'completed' ? allCompletedCases : allCancelledCases;
+    
+    return allCases.filter((caseItem) => {
+      // Filter by patient name search
+      if (searchQuery.trim()) {
+        const patientName = (caseItem.patientName || '').toLowerCase();
+        if (!patientName.includes(searchQuery.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Filter by date range
+      if (startDate || endDate) {
+        const caseDate = new Date(caseItem.dateOfProcedure);
+        caseDate.setHours(0, 0, 0, 0);
+        
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (caseDate < start) {
+            return false;
+          }
+        }
+        
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (caseDate > end) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [tab, allCompletedCases, allCancelledCases, searchQuery, startDate, endDate]);
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setStartDate(null);
+    setEndDate(null);
+  };
+
+  const cases = filteredCases;
 
   return (
     <div className="case-history-container">
@@ -134,6 +190,39 @@ export default function CaseHistoryScreen() {
         >
           Cancelled
         </button>
+      </div>
+
+      <div className="case-history-filters">
+        <div className="search-filter">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search by patient name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="date-filters-row">
+          <div className="date-filter-item">
+            <CalendarPicker
+              label="Start Date"
+              value={startDate}
+              onChange={setStartDate}
+            />
+          </div>
+          <div className="date-filter-item">
+            <CalendarPicker
+              label="End Date"
+              value={endDate}
+              onChange={setEndDate}
+            />
+          </div>
+        </div>
+        {(searchQuery || startDate || endDate) && (
+          <button className="btn-clear-filters" onClick={handleClearFilters}>
+            Clear Filters
+          </button>
+        )}
       </div>
 
       <div className="case-history-scroll">

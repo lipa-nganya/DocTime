@@ -18,7 +18,7 @@ export default function CalendarPicker({ value, onChange, label, style }) {
           {label}
         </label>
       )}
-      <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: '300px' }}>
+      <div style={{ position: 'relative', display: 'inline-block', width: '100%', maxWidth: '100%' }}>
         <input
           type="date"
           value={value ? formatDateForInput(value) : ''}
