@@ -41,10 +41,13 @@ export default function NewCaseScreen() {
   const [alertMessage, setAlertMessage] = useState(null);
 
   useEffect(() => {
-    loadData();
-    if (isEditMode && editCaseId) {
-      loadCaseData(editCaseId);
-    }
+    const initializeData = async () => {
+      await loadData();
+      if (isEditMode && editCaseId) {
+        await loadCaseData(editCaseId);
+      }
+    };
+    initializeData();
   }, [isEditMode, editCaseId]);
 
   const loadData = async () => {
@@ -74,7 +77,7 @@ export default function NewCaseScreen() {
   const loadCaseData = async (caseId) => {
     try {
       const response = await api.get(`/cases/${caseId}`);
-      const caseData = response.data.case;
+      const caseData = response.data.case || response.data;
       
       // Pre-populate all fields
       if (caseData.dateOfProcedure) {
@@ -83,8 +86,37 @@ export default function NewCaseScreen() {
       setPatientName(caseData.patientName || '');
       setInpatientNumber(caseData.inpatientNumber || '');
       setPatientAge(caseData.patientAge ? String(caseData.patientAge) : '');
-      setFacilityId(caseData.facilityId ? String(caseData.facilityId) : '');
-      setPayerId(caseData.payerId ? String(caseData.payerId) : '');
+      
+      // Handle facility - use facility object if available, otherwise use facilityId
+      if (caseData.facility && caseData.facility.id) {
+        const facilityIdStr = String(caseData.facility.id);
+        setFacilityId(facilityIdStr);
+        // Ensure facility is in the facilities list
+        setFacilities(prevFacilities => {
+          if (!prevFacilities.find(f => String(f.id) === facilityIdStr)) {
+            return [...prevFacilities, caseData.facility];
+          }
+          return prevFacilities;
+        });
+      } else if (caseData.facilityId) {
+        setFacilityId(String(caseData.facilityId));
+      }
+      
+      // Handle payer - use payer object if available, otherwise use payerId
+      if (caseData.payer && caseData.payer.id) {
+        const payerIdStr = String(caseData.payer.id);
+        setPayerId(payerIdStr);
+        // Ensure payer is in the payers list
+        setPayers(prevPayers => {
+          if (!prevPayers.find(p => String(p.id) === payerIdStr)) {
+            return [...prevPayers, caseData.payer];
+          }
+          return prevPayers;
+        });
+      } else if (caseData.payerId) {
+        setPayerId(String(caseData.payerId));
+      }
+      
       setInvoiceNumber(caseData.invoiceNumber || '');
       setAmount(caseData.amount ? String(caseData.amount) : '');
       setPaymentStatus(caseData.paymentStatus || 'Pending');
@@ -92,14 +124,34 @@ export default function NewCaseScreen() {
       setAdditionalNotes(caseData.additionalNotes || '');
       
       // Set selected procedures (handle both singular and plural)
-      const procedures = caseData.procedures || (caseData.procedure ? [caseData.procedure] : []);
-      if (procedures.length > 0) {
-        setSelectedProcedures(procedures.map(p => String(p.id)));
+      const caseProcedures = caseData.procedures || (caseData.procedure ? [caseData.procedure] : []);
+      if (caseProcedures.length > 0) {
+        setSelectedProcedures(caseProcedures.map(p => String(p.id)));
+        // Ensure procedures are in the procedures list
+        setProcedures(prevProcedures => {
+          const missingProcedures = caseProcedures.filter(cp => 
+            !prevProcedures.find(pp => String(pp.id) === String(cp.id))
+          );
+          if (missingProcedures.length > 0) {
+            return [...prevProcedures, ...missingProcedures];
+          }
+          return prevProcedures;
+        });
       }
       
       // Set selected team members
       if (caseData.teamMembers && caseData.teamMembers.length > 0) {
         setSelectedTeamMembers(caseData.teamMembers.map(m => String(m.id)));
+        // Ensure team members are in the teamMembers list
+        setTeamMembers(prevTeamMembers => {
+          const missingMembers = caseData.teamMembers.filter(cm => 
+            !prevTeamMembers.find(pm => String(pm.id) === String(cm.id))
+          );
+          if (missingMembers.length > 0) {
+            return [...prevTeamMembers, ...missingMembers];
+          }
+          return prevTeamMembers;
+        });
       }
     } catch (error) {
       console.error('Error loading case data:', error);

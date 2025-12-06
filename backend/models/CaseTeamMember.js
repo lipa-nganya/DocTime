@@ -26,7 +26,6 @@ module.exports = (sequelize) => {
   }, {
     tableName: 'case_team_members',
     timestamps: true,
-    underscored: true, // Use snake_case for database columns
     indexes: [
       {
         unique: true,
