@@ -68,6 +68,7 @@ router.get('/dashboard', async (req, res) => {
 
 /**
  * Get ongoing cases
+ * Includes all cases with status 'Upcoming' or 'Referred', regardless of date
  */
 router.get('/ongoing-cases', async (req, res) => {
   try {
@@ -75,10 +76,8 @@ router.get('/ongoing-cases', async (req, res) => {
       where: {
         status: {
           [Op.in]: ['Upcoming', 'Referred']
-        },
-        dateOfProcedure: {
-          [Op.gte]: new Date()
         }
+        // Removed dateOfProcedure filter to show all ongoing cases regardless of date
       },
       include: [
         { model: User, as: 'user', attributes: ['id', 'phoneNumber', 'role', 'prefix', 'preferredName'] },
@@ -88,6 +87,7 @@ router.get('/ongoing-cases', async (req, res) => {
       order: [['dateOfProcedure', 'ASC']]
     });
 
+    console.log(`📊 Found ${cases.length} ongoing cases`);
     res.json({ success: true, cases: cases || [] });
   } catch (error) {
     console.error('Error fetching ongoing cases:', error);
