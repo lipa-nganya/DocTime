@@ -800,6 +800,18 @@ function Cases() {
           </div>
         </div>
       )}
+
+      {showDeleteConfirm && (
+        <ConfirmModal
+          message={`Are you sure you want to delete ${selectedCases.length} case(s)? This action cannot be undone.`}
+          onConfirm={handleBulkDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          title="Confirm Delete"
+          confirmText={deleting ? 'Deleting...' : 'Delete'}
+          cancelText="Cancel"
+        />
+      )}
+
       {alertMessage && (
         <AlertModal
           message={alertMessage}
