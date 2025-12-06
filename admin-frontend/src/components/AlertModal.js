@@ -1,4 +1,5 @@
 import React from 'react';
+import './AlertModal.css';
 
 export default function AlertModal({ message, onClose, title = 'Notification' }) {
   if (!message) return null;
