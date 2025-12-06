@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import OTPInput from '../components/OTPInput';
+import PinInput from '../components/PinInput';
 import AlertModal from '../components/AlertModal';
 import './SignUpScreen.css';
 
@@ -243,25 +244,17 @@ export default function SignUpScreen() {
 
       {step === 'pin' && (
         <>
-          <input
-            type="tel"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            className="form-input"
+          <PinInput
             placeholder="Create PIN (4-6 digits)"
             value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+            onChange={setPin}
             maxLength={6}
-            autoFocus
+            autoFocus={true}
           />
-          <input
-            type="tel"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            className="form-input"
+          <PinInput
             placeholder="Confirm PIN"
             value={confirmPin}
-            onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+            onChange={setConfirmPin}
             maxLength={6}
           />
           <button
