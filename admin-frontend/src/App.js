@@ -8,6 +8,7 @@ import TeamMembersScreen from './screens/TeamMembersScreen';
 import CsvUploadScreen from './screens/CsvUploadScreen';
 import AlertModal from './components/AlertModal';
 import ConfirmModal from './components/ConfirmModal';
+import MultiSelectAutocomplete from './components/MultiSelectAutocomplete';
 import { getApiBaseUrl } from './services/environment';
 import './App.css';
 

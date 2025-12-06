@@ -1,0 +1,146 @@
+.multi-select-autocomplete-container {
+  margin-bottom: 16px;
+  position: relative;
+  width: 100%;
+}
+
+.multi-select-autocomplete-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #292F36;
+}
+
+.multi-select-autocomplete-wrapper {
+  position: relative;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #fff;
+  min-height: 40px;
+  padding: 8px;
+}
+
+.multi-select-selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.multi-select-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background-color: #4ECDC4;
+  color: white;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.multi-select-chip-remove {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.multi-select-chip-remove:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.multi-select-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.multi-select-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 6px 30px 6px 8px;
+  font-size: 14px;
+  background: transparent;
+  color: #292F36;
+}
+
+.multi-select-input::placeholder {
+  color: #999;
+}
+
+.multi-select-icon {
+  position: absolute;
+  right: 8px;
+  color: #666;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.multi-select-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 4px;
+}
+
+.multi-select-option {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #292F36;
+  transition: background-color 0.2s;
+}
+
+.multi-select-option:hover {
+  background-color: #f0f8f8;
+  color: #00c4cc;
+}
+
+.multi-select-no-results {
+  padding: 12px;
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Scrollbar styling */
+.multi-select-dropdown-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.multi-select-dropdown-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.multi-select-dropdown-list::-webkit-scrollbar-thumb {
+  background: #4ECDC4;
+  border-radius: 4px;
+}
+
+.multi-select-dropdown-list::-webkit-scrollbar-thumb:hover {
+  background: #3db8b0;
+}
+
