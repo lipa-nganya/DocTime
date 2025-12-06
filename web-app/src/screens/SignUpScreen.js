@@ -21,6 +21,9 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const formatPhoneNumber = (phone) => {
     let formatted = phone.replace(/[\s\-\(\)]/g, '').replace(/\D/g, '');
@@ -257,10 +260,44 @@ export default function SignUpScreen() {
             onChange={setConfirmPin}
             maxLength={6}
           />
+          <div className="terms-checkbox-container">
+            <label className="terms-checkbox-label">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="terms-checkbox"
+              />
+              <span className="terms-checkbox-text">
+                By signing up, you agree to our{' '}
+                <button
+                  type="button"
+                  className="terms-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate('/info/terms');
+                  }}
+                >
+                  Terms of Use
+                </button>
+                {' '}and{' '}
+                <button
+                  type="button"
+                  className="terms-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate('/info/privacy');
+                  }}
+                >
+                  Privacy Policy
+                </button>
+              </span>
+            </label>
+          </div>
           <button
             className="btn btn-primary"
             onClick={handleSignUp}
-            disabled={loading}
+            disabled={loading || !agreedToTerms}
           >
             {loading ? 'Signing up...' : 'Continue'}
           </button>
