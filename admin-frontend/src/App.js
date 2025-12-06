@@ -463,6 +463,31 @@ function Cases() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedCases.length === 0) {
+      setAlertMessage('Please select at least one case to delete');
+      setShowDeleteConfirm(false);
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const response = await axios.delete(`${getCurrentApiUrl()}/admin/cases/bulk`, {
+        data: { caseIds: selectedCases }
+      });
+      setAlertMessage(response.data.message || `Successfully deleted ${selectedCases.length} case(s)`);
+      setSelectedCases([]);
+      setShowDeleteConfirm(false);
+      loadCases();
+    } catch (error) {
+      console.error('Error deleting cases:', error);
+      setAlertMessage(error.response?.data?.error || 'Failed to delete cases');
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const cases = activeTab === 'ongoing' ? ongoingCases : 
                 activeTab === 'completed' ? completedCases : 
                 cancelledCases;
