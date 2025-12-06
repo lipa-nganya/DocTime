@@ -519,8 +519,8 @@ router.put('/cases/:id', async (req, res) => {
     const {
       facilityId,
       payerId,
-      procedureIds = [],
-      teamMemberIds = [],
+      procedureIds,
+      teamMemberIds,
       invoiceNumber,
       ...otherFields
     } = req.body;
@@ -533,11 +533,15 @@ router.put('/cases/:id', async (req, res) => {
     }
 
     // Handle numeric conversions
-    if (updateData.patientAge) {
+    if (updateData.patientAge !== undefined && updateData.patientAge !== null && updateData.patientAge !== '') {
       updateData.patientAge = parseInt(updateData.patientAge);
+    } else if (updateData.patientAge === '') {
+      updateData.patientAge = null;
     }
-    if (updateData.amount) {
+    if (updateData.amount !== undefined && updateData.amount !== null && updateData.amount !== '') {
       updateData.amount = parseFloat(updateData.amount);
+    } else if (updateData.amount === '') {
+      updateData.amount = null;
     }
 
     // Update facility, payer, invoice number
@@ -551,10 +555,33 @@ router.put('/cases/:id', async (req, res) => {
       updateData.invoiceNumber = invoiceNumber || null;
     }
 
-    // Support both procedureIds array and procedureId single value (backward compatibility)
-    const finalProcedureIds = procedureIds.length > 0 ? procedureIds : (otherFields.procedureId ? [otherFields.procedureId] : []);
-    if (finalProcedureIds.length > 0) {
-      updateData.procedureId = finalProcedureIds[0]; // Keep first procedure for backward compatibility
+    // Normalize procedureIds and teamMemberIds to arrays
+    // Handle both array and string formats
+    let normalizedProcedureIds = [];
+    if (procedureIds !== undefined) {
+      if (Array.isArray(procedureIds)) {
+        normalizedProcedureIds = procedureIds.filter(id => id !== null && id !== '').map(id => String(id));
+      } else if (procedureIds) {
+        normalizedProcedureIds = [String(procedureIds)];
+      }
+    } else if (otherFields.procedureId) {
+      normalizedProcedureIds = [String(otherFields.procedureId)];
+    }
+
+    let normalizedTeamMemberIds = [];
+    if (teamMemberIds !== undefined) {
+      if (Array.isArray(teamMemberIds)) {
+        normalizedTeamMemberIds = teamMemberIds.filter(id => id !== null && id !== '').map(id => String(id));
+      } else if (teamMemberIds) {
+        normalizedTeamMemberIds = [String(teamMemberIds)];
+      }
+    }
+
+    // Set procedureId for backward compatibility (first procedure)
+    if (normalizedProcedureIds.length > 0) {
+      updateData.procedureId = normalizedProcedureIds[0];
+    } else {
+      updateData.procedureId = null;
     }
 
     const oldData = { ...caseItem.toJSON() };
@@ -563,24 +590,26 @@ router.put('/cases/:id', async (req, res) => {
     // Update team member associations
     if (teamMemberIds !== undefined) {
       await CaseTeamMember.destroy({ where: { caseId: caseItem.id } });
-      if (teamMemberIds.length > 0) {
-        for (const teamMemberId of teamMemberIds) {
+      if (normalizedTeamMemberIds.length > 0) {
+        for (const teamMemberId of normalizedTeamMemberIds) {
           await CaseTeamMember.create({
             caseId: caseItem.id,
-            teamMemberId
+            teamMemberId: teamMemberId
           });
         }
       }
     }
 
     // Update procedure associations
-    if (finalProcedureIds.length > 0) {
+    if (procedureIds !== undefined || otherFields.procedureId) {
       await CaseProcedure.destroy({ where: { caseId: caseItem.id } });
-      for (const procId of finalProcedureIds) {
-        await CaseProcedure.create({
-          caseId: caseItem.id,
-          procedureId: procId
-        });
+      if (normalizedProcedureIds.length > 0) {
+        for (const procId of normalizedProcedureIds) {
+          await CaseProcedure.create({
+            caseId: caseItem.id,
+            procedureId: procId
+          });
+        }
       }
     }
 
@@ -631,7 +660,13 @@ router.put('/cases/:id', async (req, res) => {
     res.json({ success: true, case: updatedCase });
   } catch (error) {
     console.error('Error updating case:', error);
-    res.status(500).json({ error: 'Failed to update case' });
+    console.error('Error stack:', error.stack);
+    console.error('Request body:', JSON.stringify(req.body, null, 2));
+    res.status(500).json({ 
+      error: 'Failed to update case',
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
   }
 });
 
