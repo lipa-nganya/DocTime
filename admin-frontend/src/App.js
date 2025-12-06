@@ -5,6 +5,7 @@ import LogsScreen from './screens/LogsScreen';
 import FacilitiesScreen from './screens/FacilitiesScreen';
 import PayersScreen from './screens/PayersScreen';
 import TeamMembersScreen from './screens/TeamMembersScreen';
+import CsvUploadScreen from './screens/CsvUploadScreen';
 import AlertModal from './components/AlertModal';
 import ConfirmModal from './components/ConfirmModal';
 import { getApiBaseUrl } from './services/environment';
@@ -38,7 +39,7 @@ const getAPIBaseURL = () => {
 
 // Export a function that always gets the current API URL
 // This ensures we always use the latest environment setting
-const getCurrentApiUrl = () => getAPIBaseURL();
+export const getCurrentApiUrl = () => getAPIBaseURL();
 
 function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -1777,6 +1778,7 @@ function App() {
           <Link to="/facilities">Facilities</Link>
           <Link to="/payers">Payers</Link>
           <Link to="/team-members">Team Members</Link>
+          <Link to="/csv-upload">Upload CSV</Link>
           <Link to="/logs">Logs</Link>
           <Link to="/settings">Settings</Link>
         </nav>
@@ -1792,6 +1794,7 @@ function App() {
             <Route path="/facilities" element={<FacilitiesScreen />} />
             <Route path="/payers" element={<PayersScreen />} />
             <Route path="/team-members" element={<TeamMembersScreen />} />
+            <Route path="/csv-upload" element={<CsvUploadScreen />} />
             <Route path="/logs" element={<LogsScreen />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
