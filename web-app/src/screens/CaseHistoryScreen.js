@@ -18,6 +18,8 @@ export default function CaseHistoryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const casesPerPage = 7;
 
   useEffect(() => {
     loadCases();
@@ -171,9 +173,31 @@ export default function CaseHistoryScreen() {
     setSearchQuery('');
     setStartDate(null);
     setEndDate(null);
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
 
-  const cases = filteredCases;
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCases.length / casesPerPage);
+  const startIndex = (currentPage - 1) * casesPerPage;
+  const endIndex = startIndex + casesPerPage;
+  const paginatedCases = filteredCases.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, startDate, endDate, tab]);
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(1, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(totalPages, prev + 1));
+  };
+
+  const handlePageClick = (page) => {
+    setCurrentPage(page);
+  };
 
   return (
     <div className="case-history-container">
@@ -228,13 +252,14 @@ export default function CaseHistoryScreen() {
       <div className="case-history-scroll">
         {loading ? (
           <div className="loading-text">Loading...</div>
-        ) : cases.length === 0 ? (
+        ) : filteredCases.length === 0 ? (
           <div className="empty-card">
             <p className="empty-text">No {tab} cases</p>
           </div>
         ) : (
-          <div className="cases-list">
-            {cases.map((caseItem) => (
+          <>
+            <div className="cases-list">
+              {paginatedCases.map((caseItem) => (
               <div
                 key={caseItem.id}
                 className="case-card"
@@ -264,8 +289,45 @@ export default function CaseHistoryScreen() {
                   </button>
                 )}
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="pagination-container">
+                <button
+                  className="pagination-button"
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <div className="pagination-pages">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      className={`pagination-page ${currentPage === page ? 'active' : ''}`}
+                      onClick={() => handlePageClick(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="pagination-button"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+            {filteredCases.length > 0 && (
+              <div className="pagination-info">
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredCases.length)} of {filteredCases.length} cases
+              </div>
+            )}
+          </>
         )}
       </div>
 
