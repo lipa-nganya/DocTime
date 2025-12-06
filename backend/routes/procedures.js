@@ -6,7 +6,8 @@ const { authenticateToken } = require('./auth');
 const cache = require('../utils/cache');
 const logger = require('../utils/logger');
 
-router.use(authenticateToken);
+// Authentication disabled for app access (same as facilities, payers, team members)
+// router.use(authenticateToken);
 
 /**
  * Get all procedures (cached for 5 minutes to reduce database queries)
