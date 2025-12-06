@@ -275,6 +275,7 @@ export default function SignUpScreen() {
                   className="terms-link"
                   onClick={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     navigate('/info/terms');
                   }}
                 >
@@ -286,6 +287,7 @@ export default function SignUpScreen() {
                   className="terms-link"
                   onClick={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     navigate('/info/privacy');
                   }}
                 >
