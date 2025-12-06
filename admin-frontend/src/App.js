@@ -302,10 +302,13 @@ function Cases() {
   const [alertMessage, setAlertMessage] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const casesPerPage = 10;
 
   useEffect(() => {
     loadCases();
     loadUsers();
+    setCurrentPage(1); // Reset to page 1 when switching tabs
   }, [activeTab]);
 
   const loadUsers = async () => {
@@ -419,11 +422,8 @@ function Cases() {
   };
 
   const handleSelectAll = () => {
-    if (selectedCases.length === cases.length) {
-      setSelectedCases([]);
-    } else {
-      setSelectedCases(cases.map(c => c.id));
-    }
+    // This is now handled inline in the checkbox onChange
+    // Keeping for backward compatibility but not used
   };
 
   const handleMoveCases = async () => {
@@ -466,6 +466,27 @@ function Cases() {
   const cases = activeTab === 'ongoing' ? ongoingCases : 
                 activeTab === 'completed' ? completedCases : 
                 cancelledCases;
+
+  // Pagination calculations
+  const totalPages = Math.ceil(cases.length / casesPerPage);
+  const startIndex = (currentPage - 1) * casesPerPage;
+  const endIndex = startIndex + casesPerPage;
+  const paginatedCases = cases.slice(startIndex, endIndex);
+
+  // Reset to page 1 if current page is out of bounds
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      // Scroll to top of table
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   if (loading) return <div>Loading...</div>;
 
@@ -609,30 +630,37 @@ function Cases() {
       {cases.length === 0 ? (
         <p>No {activeTab} cases found.</p>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>
-                <input
-                  type="checkbox"
-                  checked={selectedCases.length === cases.length && cases.length > 0}
-                  onChange={handleSelectAll}
-                />
-              </th>
-              <th>Patient Name</th>
-              <th>Date of Procedure</th>
-              <th>Patient Age</th>
-              <th>Doctor</th>
-              <th>Case Owner</th>
-              <th>Facility</th>
-              <th>Status</th>
-              <th>Amount</th>
-              <th>Payment Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cases.map((caseItem) => (
+        <>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={selectedCases.length === paginatedCases.length && paginatedCases.length > 0}
+                    onChange={() => {
+                      if (selectedCases.length === paginatedCases.length) {
+                        setSelectedCases([]);
+                      } else {
+                        setSelectedCases(paginatedCases.map(c => c.id));
+                      }
+                    }}
+                  />
+                </th>
+                <th>Patient Name</th>
+                <th>Date of Procedure</th>
+                <th>Patient Age</th>
+                <th>Doctor</th>
+                <th>Case Owner</th>
+                <th>Facility</th>
+                <th>Status</th>
+                <th>Amount</th>
+                <th>Payment Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedCases.map((caseItem) => (
               <tr key={caseItem.id}>
                 <td>
                   <input
@@ -678,9 +706,57 @@ function Cases() {
                   <button className="edit-button" onClick={() => handleEdit(caseItem)}>Edit</button>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="pagination" style={{ 
+              marginTop: '20px', 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: '10px' 
+            }}>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="btn btn-sm"
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: currentPage === 1 ? '#ccc' : '#4ECDC4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Previous
+              </button>
+              
+              <span style={{ padding: '0 10px' }}>
+                Page {currentPage} of {totalPages} ({cases.length} total cases)
+              </span>
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="btn btn-sm"
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: currentPage === totalPages ? '#ccc' : '#4ECDC4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {showMoveModal && (
