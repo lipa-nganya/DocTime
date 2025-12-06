@@ -257,7 +257,6 @@ router.post('/cases', async (req, res) => {
     }
 
     // Determine status - auto-complete cases with past dates
-    let caseStatus = status;
     const procedureDate = new Date(dateOfProcedure);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -266,9 +265,12 @@ router.post('/cases', async (req, res) => {
     // If date is in the past (before today), auto-complete the case
     const isDatePassed = procedureDate < today;
     
-    // Override status if date has passed (unless explicitly set to something else)
-    if (!caseStatus || (isDatePassed && caseStatus === 'Upcoming')) {
-      caseStatus = isDatePassed ? 'Completed' : (caseStatus || 'Upcoming');
+    // Always auto-complete cases with past dates, regardless of status parameter
+    let caseStatus = status;
+    if (isDatePassed) {
+      caseStatus = 'Completed'; // Force Completed status for past dates
+    } else if (!caseStatus) {
+      caseStatus = 'Upcoming'; // Default to Upcoming for future dates
     }
 
     // Create case
