@@ -4,6 +4,7 @@ const { User, Case, Referral, Role, TeamMember, Settings, Facility, Payer, Activ
 const { authenticateToken } = require('./auth');
 const { Op } = require('sequelize');
 const { Sequelize } = require('sequelize');
+const { logActivity, getIpAddress, getUserAgent } = require('../utils/activityLogger');
 
 // Admin routes (in production, add admin role check)
 // Temporarily disable auth for local development - add back in production
@@ -22,6 +23,34 @@ router.get('/users', async (req, res) => {
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+/**
+ * Update user (admin only)
+ */
+router.put('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { prefix, preferredName, role, otherRole } = req.body;
+
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updateData = {};
+    if (prefix !== undefined) updateData.prefix = prefix || null;
+    if (preferredName !== undefined) updateData.preferredName = preferredName || null;
+    if (role !== undefined) updateData.role = role || null;
+    if (otherRole !== undefined) updateData.otherRole = otherRole || null;
+
+    await user.update(updateData);
+
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
   }
 });
 
@@ -216,6 +245,7 @@ router.put('/cases/:id', async (req, res) => {
       updateData.amount = parseFloat(updateData.amount);
     }
 
+    const oldData = { ...caseItem.toJSON() };
     await caseItem.update(updateData);
 
     // Reload case with associations
@@ -225,6 +255,23 @@ router.put('/cases/:id', async (req, res) => {
         { model: require('../models').Facility, as: 'facility' },
         { model: require('../models').Procedure, as: 'procedure' }
       ]
+    });
+
+    // Log activity (admin update)
+    await logActivity({
+      userId: req.userId || null, // Admin might not have userId, use null if not available
+      action: 'UPDATE_CASE',
+      entityType: 'Case',
+      entityId: caseItem.id,
+      description: `Admin updated case for patient "${caseItem.patientName}"`,
+      metadata: {
+        caseId: caseItem.id,
+        oldData,
+        newData: updateData,
+        updatedBy: 'admin'
+      },
+      ipAddress: getIpAddress(req),
+      userAgent: getUserAgent(req)
     });
 
     // Send push notification (implement notification service)

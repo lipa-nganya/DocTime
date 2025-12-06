@@ -301,6 +301,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     const caseItem = referral.case;
+    const patientName = caseItem.patientName;
 
     // Delete the referral
     await referral.destroy();
