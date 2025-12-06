@@ -33,11 +33,9 @@ export default function FacilitiesScreen() {
     try {
       // Add cache-busting parameter to avoid browser cache
       const response = await axios.get(`${getCurrentApiUrl()}/facilities`, {
-        params: { _t: Date.now() },
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+        params: { _t: Date.now() }
+        // Removed Cache-Control header from request to avoid CORS issues
+        // The backend sets Cache-Control in the response, which is fine
       });
       setFacilities(response.data.facilities || []);
     } catch (error) {
