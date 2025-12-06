@@ -138,6 +138,16 @@ function Users() {
 
   if (loading) return <div>Loading...</div>;
 
+  // Helper function to format user name from prefix and preferredName
+  const formatUserName = (user) => {
+    if (!user) return 'N/A';
+    const parts = [];
+    if (user.prefix) parts.push(user.prefix);
+    if (user.preferredName) parts.push(user.preferredName);
+    const name = parts.join(' ').trim();
+    return name || 'N/A';
+  };
+
   return (
     <div className="users">
       <h2>Users</h2>
@@ -145,6 +155,7 @@ function Users() {
         <thead>
           <tr>
             <th>Phone Number</th>
+            <th>Name</th>
             <th>Role</th>
             <th>Signup OTP</th>
             <th>Last Login</th>
@@ -155,6 +166,7 @@ function Users() {
           {users.map((user) => (
             <tr key={user.id}>
               <td>{user.phoneNumber}</td>
+              <td>{formatUserName(user)}</td>
               <td>{user.role}{user.otherRole ? ` (${user.otherRole})` : ''}</td>
               <td style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#4ECDC4' }}>
                 {user.signupOTP || '-'}
